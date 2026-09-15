@@ -36,12 +36,13 @@
 
 ## E1 · `:core-notation`
 
-### T-010 · Ноты, октавы, центы `todo` · после T-002
+### T-010 · Ноты, октавы, центы `done` · после T-002
 - `hzToMidi(f, a4)`, `midiToHz`, `nearestNote`, `cents` ∈ (−50, +50]; A4 настраиваемый 415–466.
 - Имена: EN научные (`C4`, `C♯4`, бемоли по настройке); RU компактные (`Соль¹`, `Ля малой`, `До большой`, суб-/контроктава) и полные («ля первой октавы») для accessibility.
 - Форматтеры `NotationMode = RU | EN | BOTH`.
 - **Тесты:** 440 → A4/Ля¹ 0 ¢; 261.63 → C4/До¹; 226 → A3 +46 ¢; границы октав (B3/C4); a4 = 432.
 - **Готово, когда:** таблица §7 полностью покрыта тестами.
+- Итог 2026‑09‑15: `Pitch.kt` (`hzToMidi`, `midiToHz`, `centsBetween`, `nearestNote` → `Pitch(note, cents)`, `Tuning` 415–466), `Note.kt` (`Note` value class, `PitchClass`, `Accidentals`), `NoteNames.kt` (`en`/`enAscii`/`ru`/`ruFull`/`label`/`cents`/`centsSpoken`, `NotationMode`, `NoteLabel`). 16 тестов, включая всю таблицу октав §7.
 
 ---
 
