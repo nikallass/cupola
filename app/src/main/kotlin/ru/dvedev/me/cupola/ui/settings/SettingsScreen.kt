@@ -2,7 +2,10 @@ package ru.dvedev.me.cupola.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,10 +52,11 @@ import java.text.DateFormat
 import java.util.Date
 
 /** Settings (SPEC §15.5, T-060). Every field has a «?» with a plain explanation. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onCalibrate: () -> Unit, onTokens: () -> Unit, onLanguageChanged: () -> Unit) {
+fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onRoomNoise: () -> Unit, onTokens: () -> Unit, onLanguageChanged: () -> Unit) {
     val s by graph.settingsState.collectAsStateWithLifecycle()
-    val calibration by graph.calibrationState.collectAsStateWithLifecycle()
+    val roomNoise by graph.roomNoiseState.collectAsStateWithLifecycle()
     val engineState by graph.engine.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val c = CupolaTheme.colors
@@ -89,15 +93,16 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onCalibrate: () -> Unit,
                     onIncrement = { update { it.copy(customHiHz = (it.customHiHz + Settings.CUSTOM_STEP_HZ).coerceAtMost(Settings.CUSTOM_MAX_HZ)) } },
                 )
             }
-            SettingRow(stringResource(R.string.settings_calibration), stringResource(R.string.settings_calibration_help)) {
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    val cal = calibration
+            SettingRow(stringResource(R.string.settings_room_noise), stringResource(R.string.settings_room_noise_help)) {
+                FlowRow(verticalArrangement = Arrangement.spacedBy(6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val rn = roomNoise
                     Text(
-                        if (cal == null) stringResource(R.string.no_calibration) else DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(cal.createdAtEpochMs)),
-                        style = t.sub, color = c.dim,
+                        if (rn == null) stringResource(R.string.no_room_noise)
+                        else "%.0f dBFS · ".format(rn.rmsDbfs) + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(rn.createdAtEpochMs)),
+                        style = t.sub, color = c.dim, modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically),
                     )
-                    Spacer(Modifier.width(10.dp))
-                    PillButton(stringResource(R.string.settings_calibrate), onClick = onCalibrate, style = PillStyle.Primary)
+                    PillButton(stringResource(R.string.settings_measure_noise), onClick = onRoomNoise, style = PillStyle.Primary)
+                    if (rn != null) PillButton(stringResource(R.string.settings_forget_noise), onClick = { scope.launch { graph.settings.clearRoomNoise() } }, style = PillStyle.Outline)
                 }
             }
             StepperRow(
@@ -142,7 +147,7 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onCalibrate: () -> Unit,
             )
             SettingRow(stringResource(R.string.settings_source_status), stringResource(R.string.settings_source_status_help)) {
                 val st = engineState
-                if (st is EngineState.Running) {
+                if (st is EngineState.Running) Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
                     Badge(
                         when (st.source.processing) {
                             ProcessingState.DISABLED -> stringResource(R.string.processing_disabled)
@@ -150,8 +155,7 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onCalibrate: () -> Unit,
                             ProcessingState.UNVERIFIED -> stringResource(R.string.processing_unverified)
                         },
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text("${st.source.sourceName} · ${st.source.sampleRate} " + stringResource(R.string.unit_hz), style = t.sub, color = c.dim)
+                    Text("${st.source.sourceName} · ${st.source.sampleRate} " + stringResource(R.string.unit_hz), style = t.sub, color = c.dim, modifier = Modifier.padding(top = 4.dp))
                 } else {
                     Text("—", style = t.sub, color = c.dim)
                 }
@@ -175,8 +179,10 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onCalibrate: () -> Unit,
                     onDecrement = { update { it.copy(centsWarn = (it.centsWarn - 1).coerceAtLeast(it.centsOk + 1)) } }, onIncrement = { update { it.copy(centsWarn = (it.centsWarn + 1).coerceAtMost(49)) } })
                 StepperRow(stringResource(R.string.settings_confidence), stringResource(R.string.settings_confidence_help), "%.2f".format(s.confidenceMin),
                     onDecrement = { update { it.copy(confidenceMin = (it.confidenceMin - 0.05).coerceAtLeast(0.3)) } }, onIncrement = { update { it.copy(confidenceMin = (it.confidenceMin + 0.05).coerceAtMost(0.95)) } })
-                StepperRow(stringResource(R.string.settings_spl_k), stringResource(R.string.settings_spl_k_help), "%.2f".format(s.splK),
-                    onDecrement = { update { it.copy(splK = (it.splK - 0.05).coerceAtLeast(0.5)) } }, onIncrement = { update { it.copy(splK = (it.splK + 0.05).coerceAtMost(0.9)) } })
+                StepperRow(stringResource(R.string.settings_ring_share), stringResource(R.string.settings_ring_share_help), "${s.ringShareFullPct} %",
+                    onDecrement = { update { it.copy(ringShareFullPct = (it.ringShareFullPct - 1).coerceAtLeast(4)) } }, onIncrement = { update { it.copy(ringShareFullPct = (it.ringShareFullPct + 1).coerceAtMost(40)) } })
+                StepperRow(stringResource(R.string.settings_ring_hump), stringResource(R.string.settings_ring_hump_help), "${s.ringHumpFullDb} dB",
+                    onDecrement = { update { it.copy(ringHumpFullDb = (it.ringHumpFullDb - 1).coerceAtLeast(2)) } }, onIncrement = { update { it.copy(ringHumpFullDb = (it.ringHumpFullDb + 1).coerceAtMost(20)) } })
                 StepperRow(stringResource(R.string.settings_w_ring), stringResource(R.string.settings_weights_help), "%.2f".format(s.ringWeight),
                     onDecrement = { update { it.copy(ringWeight = (it.ringWeight - 0.05).coerceAtLeast(0.0)) } }, onIncrement = { update { it.copy(ringWeight = (it.ringWeight + 0.05).coerceAtMost(1.0)) } })
                 StepperRow(stringResource(R.string.settings_w_pitch), stringResource(R.string.settings_weights_help), "%.2f".format(s.pitchWeight),

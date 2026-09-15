@@ -19,7 +19,7 @@ class RingMetricsTest {
         p.run(signal) { s -> all += RingMetrics.measure(s.spectrum, b, RingMetrics.splDbfs(s.frame.raw)) }
         // median over frames
         fun med(f: (RingMeasure) -> Double) = all.map(f).sorted()[all.size / 2]
-        return RingMeasure(med { it.ringRatioDb }, med { it.ringSharePct }, med { it.peakSprDb }, med { it.splDbfs })
+        return RingMeasure(med { it.ringRatioDb }, med { it.ringSharePct }, med { it.peakSprDb }, med { it.splDbfs }, med { it.humpDb })
     }
 
     private val voice = VoiceSpec(PitchContour.Constant(220.0), tiltDbPerOctave = -9.0, amplitude = 0.2, normalise = false)
@@ -34,27 +34,21 @@ class RingMetricsTest {
     }
 
     @Test
-    fun `loudness-consistent voices give equal RingRatio_norm within 1 dB`() {
-        // Bloothooft & Plomp: +10 dB SPL brings ≈ +7 dB extra in the formant region → k = 0.7 cancels it
-        val soft = measure(Signals.harmonicVoice(voice, 1.0, fs))
-        val loud = measure(
-            Signals.gain(Signals.harmonicVoice(voice.copy(bandGains = listOf(BandGain(band.loHz, band.hiHz, 7.0))), 1.0, fs), 10.0),
-        )
-        assertEquals(10.0, loud.splDbfs - soft.splDbfs, 0.5)
-        val baseline = soft.splDbfs
-        val normSoft = RingMetrics.normalise(soft.ringRatioDb, soft.splDbfs, baseline)
-        val normLoud = RingMetrics.normalise(loud.ringRatioDb, loud.splDbfs, baseline)
-        assertEquals(normSoft, normLoud, 1.0)
+    fun `a band gain makes a hump of the same size`() {
+        val plain = measure(Signals.harmonicVoice(voice, 1.0, fs))
+        val boosted = measure(Signals.harmonicVoice(voice.copy(bandGains = listOf(BandGain(band.loHz, band.hiHz, 10.0))), 1.0, fs))
+        assertEquals(10.0, boosted.humpDb - plain.humpDb, 1.5)
+        assertTrue(plain.humpDb in -4.0..4.0, "a plain −9 dB/oct voice has no hump: ${plain.humpDb}")
     }
 
     @Test
-    fun `pure gain leaves RingRatio unchanged and lowers RingRatio_norm by k·ΔSPL`() {
+    fun `pure gain leaves share and hump unchanged`() {
         val soft = measure(Signals.harmonicVoice(voice, 1.0, fs))
         val loud = measure(Signals.gain(Signals.harmonicVoice(voice, 1.0, fs), 10.0))
+        assertEquals(10.0, loud.splDbfs - soft.splDbfs, 0.5)
         assertEquals(soft.ringRatioDb, loud.ringRatioDb, 0.2)
-        val normSoft = RingMetrics.normalise(soft.ringRatioDb, soft.splDbfs, soft.splDbfs)
-        val normLoud = RingMetrics.normalise(loud.ringRatioDb, loud.splDbfs, soft.splDbfs)
-        assertEquals(-7.0, normLoud - normSoft, 0.5)
+        assertEquals(soft.ringSharePct, loud.ringSharePct, 0.3)
+        assertEquals(soft.humpDb, loud.humpDb, 0.2)
     }
 
     @Test

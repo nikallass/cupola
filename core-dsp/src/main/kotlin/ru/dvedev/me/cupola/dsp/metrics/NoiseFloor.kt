@@ -64,6 +64,21 @@ class NoiseFloor(
         return voice
     }
 
+    /**
+     * Starts from a measured room profile ([RoomNoise]): the profile becomes the current
+     * floor and fills the history, so it fades out only as new unvoiced frames arrive.
+     */
+    fun seed(profileDb: DoubleArray) {
+        for (b in 0 until bins) {
+            val v = profileDb[b.coerceAtMost(profileDb.size - 1)]
+            this.profileDb[b] = v
+            history[b].fill(v)
+        }
+        histHead = 0
+        histSize = historySlots
+        if (frames < initFrames) frames = initFrames.toLong()
+    }
+
     fun reset() {
         for (h in history) h.fill(Double.NaN)
         histHead = 0

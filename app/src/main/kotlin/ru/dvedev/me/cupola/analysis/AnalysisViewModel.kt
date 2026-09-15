@@ -13,21 +13,19 @@ import kotlinx.coroutines.flow.stateIn
 import ru.dvedev.me.cupola.AppGraph
 import ru.dvedev.me.cupola.audio.EngineState
 import ru.dvedev.me.cupola.dsp.FrameMetrics
-import ru.dvedev.me.cupola.dsp.calibration.Calibration
 import ru.dvedev.me.cupola.dsp.session.SessionSummary
 import ru.dvedev.me.cupola.notation.Note
 import ru.dvedev.me.cupola.settings.Settings
 
 /**
  * State holder of the Analysis screen. Analysis runs whenever the app is visible
- * (SPEC §15.5); a session (points, hints) is opened with «Старт» and needs a calibration.
+ * (SPEC §15.5); a session (points, hints) is opened with «Старт».
  */
 @OptIn(FlowPreview::class)
 class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
     private val engine = graph.engine
     val engineState: StateFlow<EngineState> = engine.state
     val settings: StateFlow<Settings> = graph.settingsState
-    val calibration: StateFlow<Calibration?> = graph.calibrationState
     val session: SessionController = graph.session
 
     /** Text readouts recompose at ~25 Hz; canvases pull from the histories every display frame. */
@@ -41,10 +39,6 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
 
     /** Pinned target note (tap on the note zone), or null. */
     var targetNote: Note? by mutableStateOf(null)
-        private set
-
-    /** «Старт» pressed without a calibration: the screen offers to calibrate. */
-    var calibrationPrompt: Boolean by mutableStateOf(false)
         private set
 
     /** Pause (T-056): readouts freeze on the last frame, the spectrogram can be scrolled back. */
@@ -87,19 +81,7 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
         targetNote = if (targetNote == null) current else null
     }
 
-    /** Returns false when a calibration is required first. */
-    fun startSession(): Boolean {
-        if (calibration.value == null) {
-            calibrationPrompt = true
-            return false
-        }
-        graph.startSession()
-        return true
-    }
-
-    fun dismissCalibrationPrompt() {
-        calibrationPrompt = false
-    }
+    fun startSession() = graph.startSession()
 
     fun stopSession(): SessionSummary? = graph.stopSession()
 

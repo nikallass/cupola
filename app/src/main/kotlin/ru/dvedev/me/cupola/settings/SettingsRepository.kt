@@ -14,8 +14,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import org.json.JSONObject
 import ru.dvedev.me.cupola.audio.AudioSourcePreference
-import ru.dvedev.me.cupola.dsp.calibration.Calibration
-import ru.dvedev.me.cupola.dsp.metrics.RingBand
+import ru.dvedev.me.cupola.dsp.metrics.RoomNoise
 import ru.dvedev.me.cupola.dsp.metrics.VoiceType
 import ru.dvedev.me.cupola.notation.Accidentals
 import ru.dvedev.me.cupola.notation.NotationMode
@@ -24,8 +23,7 @@ import ru.dvedev.me.cupola.ui.theme.ThemeMode
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "cupola_settings")
 
 /**
- * DataStore-backed settings and calibrations (SPEC §15.2: no Room in v0.1).
- * Calibrations are JSON blobs keyed by [Settings.calibrationKey].
+ * DataStore-backed settings and the room noise profile (SPEC §15.2: no Room in v0.1).
  */
 class SettingsRepository(context: Context) {
     private val store = context.applicationContext.dataStore
@@ -48,24 +46,23 @@ class SettingsRepository(context: Context) {
     /** Synchronous read for [android.app.Activity.attachBaseContext]. */
     fun languageSync(): Language = runCatching { Language.valueOf(localePrefs.getString(KEY_LANGUAGE, null) ?: "") }.getOrDefault(Language.SYSTEM)
 
-    val calibrations: Flow<Map<String, Calibration>> = store.data.map { prefs ->
-        prefs.asMap().entries
-            .filter { it.key.name.startsWith(CAL_PREFIX) }
-            .mapNotNull { (k, v) -> (v as? String)?.let { json -> parseCalibration(json)?.let { k.name.removePrefix(CAL_PREFIX) to it } } }
-            .toMap()
+    /** The measured room noise profile, or null. */
+    val roomNoise: Flow<RoomNoise?> = store.data.map { prefs -> prefs[stringPreferencesKey(K_ROOM_NOISE)]?.let { parseRoomNoise(it) } }
+
+    suspend fun saveRoomNoise(noise: RoomNoise) {
+        store.edit { it[stringPreferencesKey(K_ROOM_NOISE)] = noise.toJson() }
     }
 
-    suspend fun calibration(key: String): Calibration? = calibrations.first()[key]
-
-    suspend fun saveCalibration(key: String, calibration: Calibration) {
-        store.edit { it[stringPreferencesKey(CAL_PREFIX + key)] = calibration.toJson() }
+    suspend fun clearRoomNoise() {
+        store.edit { it.remove(stringPreferencesKey(K_ROOM_NOISE)) }
     }
 
     suspend fun resetAdvanced() {
         update { s ->
             val d = Settings()
             s.copy(
-                centsOk = d.centsOk, centsWarn = d.centsWarn, confidenceMin = d.confidenceMin, splK = d.splK,
+                centsOk = d.centsOk, centsWarn = d.centsWarn, confidenceMin = d.confidenceMin,
+                ringShareFullPct = d.ringShareFullPct, ringHumpFullDb = d.ringHumpFullDb,
                 ringWeight = d.ringWeight, pitchWeight = d.pitchWeight, steadyWeight = d.steadyWeight,
             )
         }
@@ -94,7 +91,8 @@ class SettingsRepository(context: Context) {
             centsOk = this[intPreferencesKey(K_CENTS_OK)] ?: d.centsOk,
             centsWarn = this[intPreferencesKey(K_CENTS_WARN)] ?: d.centsWarn,
             confidenceMin = this[doublePreferencesKey(K_CONF)] ?: d.confidenceMin,
-            splK = this[doublePreferencesKey(K_SPL_K)] ?: d.splK,
+            ringShareFullPct = this[intPreferencesKey(K_RING_SHARE)] ?: d.ringShareFullPct,
+            ringHumpFullDb = this[intPreferencesKey(K_RING_HUMP)] ?: d.ringHumpFullDb,
             ringWeight = this[doublePreferencesKey(K_W_RING)] ?: d.ringWeight,
             pitchWeight = this[doublePreferencesKey(K_W_PITCH)] ?: d.pitchWeight,
             steadyWeight = this[doublePreferencesKey(K_W_STEADY)] ?: d.steadyWeight,
@@ -122,7 +120,8 @@ class SettingsRepository(context: Context) {
         this[intPreferencesKey(K_CENTS_OK)] = s.centsOk
         this[intPreferencesKey(K_CENTS_WARN)] = s.centsWarn
         this[doublePreferencesKey(K_CONF)] = s.confidenceMin
-        this[doublePreferencesKey(K_SPL_K)] = s.splK
+        this[intPreferencesKey(K_RING_SHARE)] = s.ringShareFullPct
+        this[intPreferencesKey(K_RING_HUMP)] = s.ringHumpFullDb
         this[doublePreferencesKey(K_W_RING)] = s.ringWeight
         this[doublePreferencesKey(K_W_PITCH)] = s.pitchWeight
         this[doublePreferencesKey(K_W_STEADY)] = s.steadyWeight
@@ -132,7 +131,7 @@ class SettingsRepository(context: Context) {
     companion object {
         private const val LOCALE_PREFS = "cupola_locale"
         private const val KEY_LANGUAGE = "language"
-        private const val CAL_PREFIX = "calibration."
+        private const val K_ROOM_NOISE = "roomNoise"
         private const val K_VOICE = "voiceType"
         private const val K_CUSTOM_LO = "customLoHz"
         private const val K_CUSTOM_HI = "customHiHz"
@@ -151,26 +150,26 @@ class SettingsRepository(context: Context) {
         private const val K_CENTS_OK = "centsOk"
         private const val K_CENTS_WARN = "centsWarn"
         private const val K_CONF = "confidenceMin"
-        private const val K_SPL_K = "splK"
+        private const val K_RING_SHARE = "ringShareFullPct"
+        private const val K_RING_HUMP = "ringHumpFullDb"
         private const val K_W_RING = "ringWeight"
         private const val K_W_PITCH = "pitchWeight"
         private const val K_W_STEADY = "steadyWeight"
         private const val K_ONBOARDING = "onboardingDone"
 
-        fun Calibration.toJson(): String = JSONObject()
-            .put("lo", band.loHz).put("hi", band.hiHz)
-            .put("noise", noiseFloorDbfs).put("ring", ringRatioDb).put("spl", splDbfs)
-            .put("voiced", voicedShare).put("createdAt", createdAtEpochMs)
+        fun RoomNoise.toJson(): String = JSONObject()
+            .put("sampleRate", sampleRate).put("fftSize", fftSize).put("rms", rmsDbfs).put("createdAt", createdAtEpochMs)
+            .put("profile", profileDb.joinToString(",") { "%.1f".format(java.util.Locale.ROOT, it) })
             .toString()
 
-        fun parseCalibration(json: String): Calibration? = runCatching {
+        fun parseRoomNoise(json: String): RoomNoise? = runCatching {
             val o = JSONObject(json)
-            Calibration(
-                band = RingBand(o.getDouble("lo"), o.getDouble("hi")),
-                noiseFloorDbfs = o.getDouble("noise"),
-                ringRatioDb = o.getDouble("ring"),
-                splDbfs = o.getDouble("spl"),
-                voicedShare = o.optDouble("voiced", 1.0),
+            val profile = o.getString("profile").split(',').map { it.toDouble() }.toDoubleArray()
+            RoomNoise(
+                sampleRate = o.getInt("sampleRate"),
+                fftSize = o.getInt("fftSize"),
+                profileDb = profile,
+                rmsDbfs = o.getDouble("rms"),
                 createdAtEpochMs = o.getLong("createdAt"),
             )
         }.getOrNull()

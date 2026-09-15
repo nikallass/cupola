@@ -49,6 +49,8 @@ class HarmonicCombRefiner(
     val fundamentalBelowStrongestDb: Double = 30.0,
     /** At least this many of the first three harmonics must be audible (a shared sub-harmonic of two voices has none). */
     val minLowHarmonics: Int = 2,
+    /** Fundamental margin over the floor for a time-domain (YIN) candidate, dB. */
+    val lenientAboveFloorDb: Double = 3.0,
     /** Grid step of [search] / [candidates], cents. */
     val searchStepCents: Double = 25.0,
     /** [search] score that maps to confidence 1 (a clean voice scores ~100). */
@@ -78,7 +80,12 @@ class HarmonicCombRefiner(
      * Comb score of candidate [c]; NaN when the candidate is rejected. Fills [level]/[floor]/
      * [peakHz] for `k = 1..n` and returns the audible count through [countOut].
      */
-    private fun score(c: Double, spectrum: PowerSpectrum, noise: NoiseFloor, ratio: Double, strongest: Double, countOut: IntArray, minLow: Int = minLowHarmonics): Double {
+    /**
+     * [lenientFundamental]: the candidate comes from the time-domain detector, which heard
+     * this period in the waveform — the fundamental only has to exist as a peak (a mic path
+     * that thins the low end must not veto the voice), and it may sit far below the strongest harmonic.
+     */
+    private fun score(c: Double, spectrum: PowerSpectrum, noise: NoiseFloor, ratio: Double, strongest: Double, countOut: IntArray, minLow: Int = minLowHarmonics, lenientFundamental: Boolean = false): Double {
         val nyquist = spectrum.nyquistHz
         // (the fundamental must be a real local-maximum peak — checked in the harmonic loop
         // below; a prominence test against bins a few away vetoed voices next to louder
@@ -116,7 +123,7 @@ class HarmonicCombRefiner(
             peakHz[n] = bestHz
             n++
         }
-        if (n == 0 || !present[0] || level[0] - floor[0] < aboveFloorDb) { lastReject = 2; return Double.NaN }
+        if (n == 0 || !present[0] || level[0] - floor[0] < (if (lenientFundamental) lenientAboveFloorDb else aboveFloorDb)) { lastReject = 2; return Double.NaN }
 
         var s = 0.0
         var count = 0
@@ -124,7 +131,7 @@ class HarmonicCombRefiner(
         var lowCount = 0
         var maxLevel = -200.0
         for (k in 1..n) if (level[k - 1] > maxLevel) maxLevel = level[k - 1]
-        if (level[0] < maxLevel - fundamentalBelowStrongestDb) { lastReject = 3; return Double.NaN }
+        if (!lenientFundamental && level[0] < maxLevel - fundamentalBelowStrongestDb) { lastReject = 3; return Double.NaN }
         for (k in 1..n) {
             counted[k - 1] = false
             val lv = level[k - 1]
@@ -172,9 +179,9 @@ class HarmonicCombRefiner(
      * Comb score of an arbitrary frequency (NaN when rejected) with the fundamental refined
      * from its harmonic peaks — for the tracker's own candidates (YIN and its octaves).
      */
-    fun scoreAt(hz: Double, spectrum: PowerSpectrum, noise: NoiseFloor, out: Candidate, minLow: Int = minLowHarmonics): Boolean {
+    fun scoreAt(hz: Double, spectrum: PowerSpectrum, noise: NoiseFloor, out: Candidate, minLow: Int = minLowHarmonics, lenientFundamental: Boolean = false): Boolean {
         if (hz < minHz || hz > maxHz) return false
-        val s = score(hz, spectrum, noise, 1.0, -200.0, countScratch, minLow)
+        val s = score(hz, spectrum, noise, 1.0, -200.0, countScratch, minLow, lenientFundamental)
         if (s.isNaN() || s <= 0.0) return false
         out.hz = refinedHz(hz, spectrum)
         out.score = s

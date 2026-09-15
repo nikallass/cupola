@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ru.dvedev.me.cupola.analysis.PointsEvent
@@ -62,8 +63,8 @@ import kotlin.math.min
 /**
  * Zone ② «Нота» (SPEC §15.3): the note, cents scale, sub-line, cupola arc, reserved hint
  * row and the only green on the screen. Tap pins the current note as the target; long
- * press on the arc opens calibration. [compact] (landscape column) stacks the arc under
- * the note instead of beside it.
+ * press on the arc opens the room-noise measurement. [compact] (landscape column) stacks
+ * the arc under the note instead of beside it.
  */
 @Composable
 fun NoteZone(
@@ -71,7 +72,6 @@ fun NoteZone(
     display: DisplayNote,
     session: SessionUiState,
     targetNote: Note?,
-    baselineDb: Double?,
     notation: NotationMode,
     accidentals: Accidentals,
     hintsEnabled: Boolean,
@@ -89,20 +89,13 @@ fun NoteZone(
     val glowMax = if (session.active && !session.paused) 0.32f else 0.12f
     val glow = (score / 0.7).coerceIn(0.0, 1.0).toFloat() * glowMax
 
-    // the arc shows the live ring measurement (SPEC §15.3 "заливка ∝ ring"), not the gated score
-    // component: relative to the baseline when calibrated, else the band's energy share; gated → dimmed
-    val relDb = if (baselineDb != null && !display.ringNormDb.isNaN()) display.ringNormDb - baselineDb else Double.NaN
-    val arcValue = when {
-        !relDb.isNaN() -> formatDb(relDb) + " dB"
-        !display.ringSharePct.isNaN() -> "%.0f %%".format(display.ringSharePct)
-        else -> "—"
-    }
-    val arcFill = when {
-        !relDb.isNaN() -> ((relDb + 3.0) / 9.0).coerceIn(0.0, 1.0)
-        !display.ringSharePct.isNaN() -> (display.ringSharePct / 25.0).coerceIn(0.0, 1.0)
-        else -> 0.0
-    }
-    val arcCounted = display.counted && baselineDb != null
+    // the arc shows the cupola indicator (owner decision 2026‑09‑15): share of the voice
+    // energy in the band × the hump it makes over its flanks, loudness-independent
+    val arcValue = if (!display.ringSharePct.isNaN()) "%.0f %%".format(display.ringSharePct) else "—"
+    val arcSub = if (!display.humpDb.isNaN()) stringResource(R.string.hump_fmt, formatDb(display.humpDb)) else ""
+
+    val arcFill = if (m != null && m.voice) display.ring.coerceIn(0.0, 1.0) else 0.0
+    val arcCounted = display.counted
     val arcModifier = Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { onLongPressArc() }) }
 
     Box(modifier.background(c.panel)) {
@@ -117,9 +110,6 @@ fun NoteZone(
                 right = {
                     // why the ring is not being counted right now (SPEC §6.2 gates), else the target / tap hint
                     val gateText = if (m != null && m.voice && !display.counted) when (display.gate) {
-                        Gate.NOT_CALIBRATED -> stringResource(R.string.gate_not_calibrated)
-                        Gate.PUSHED -> stringResource(R.string.gate_pushed)
-                        Gate.UNSTABLE_PITCH -> stringResource(R.string.gate_unstable)
                         Gate.LOW_CONFIDENCE -> stringResource(R.string.gate_low_confidence)
                         Gate.SOVT -> stringResource(R.string.gate_sovt)
                         else -> null
@@ -166,7 +156,7 @@ fun NoteZone(
                     noteBlock(Modifier.fillMaxWidth())
                     Spacer(Modifier.height(16.dp))
                     Box(Modifier.width(180.dp).align(Alignment.CenterHorizontally)) {
-                        CupolaArc(ring = arcFill, counted = arcCounted, valueText = arcValue, modifier = arcModifier.fillMaxWidth())
+                        CupolaArc(ring = arcFill, counted = arcCounted, valueText = arcValue, subText = arcSub, modifier = arcModifier.fillMaxWidth())
                         if (pointsAnimation) PointsBurst(session.lastPoints, Modifier.matchParentSize())
                     }
                 }
@@ -178,7 +168,7 @@ fun NoteZone(
                     noteBlock(Modifier.weight(1f))
                     Spacer(Modifier.width(12.dp))
                     Box(Modifier.width(150.dp)) {
-                        CupolaArc(ring = arcFill, counted = arcCounted, valueText = arcValue, modifier = arcModifier.fillMaxWidth())
+                        CupolaArc(ring = arcFill, counted = arcCounted, valueText = arcValue, subText = arcSub, modifier = arcModifier.fillMaxWidth())
                         if (pointsAnimation) PointsBurst(session.lastPoints, Modifier.matchParentSize())
                     }
                 }
@@ -230,14 +220,25 @@ private fun CentsScale(cents: Double, modifier: Modifier = Modifier) {
 }
 
 /**
- * Half-circle «купол»: track in panel2, gold sweep ∝ the live ring measurement, value
- * underneath. [counted] = all gates open (the ring is earning points); otherwise the sweep is dimmed.
+ * Half-circle «купол» (owner decision 2026‑09‑15): the gold fill grows from BOTH ends of
+ * the arc towards the apex, ∝ the cupola indicator. When the halves meet ([MET]) the apex
+ * flickers and sparks, points flow and the phone vibrates. [counted] = the ring is being
+ * earned (voice present, pitch trusted); otherwise the fill is dimmed.
  */
 @Composable
-private fun CupolaArc(ring: Double, counted: Boolean, valueText: String, modifier: Modifier = Modifier) {
+private fun CupolaArc(ring: Double, counted: Boolean, valueText: String, subText: String, modifier: Modifier = Modifier) {
     val c = CupolaTheme.colors
     val t = CupolaTheme.type
-    val sweep by animateFloatAsState(targetValue = ring.toFloat(), animationSpec = tween(180), label = "ring")
+    val fill by animateFloatAsState(targetValue = ring.toFloat(), animationSpec = tween(180), label = "ring")
+    val met = fill >= MET
+    // a clock for the sparkle, running only while the halves have met
+    var clock by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(met) {
+        if (!met) return@LaunchedEffect
+        val start = withFrameNanos { it }
+        while (true) withFrameNanos { now -> clock = (now - start) / 1e9f }
+    }
+    val sparks = remember { List(SPARKS) { i -> Spark(seed = i * 0.618f % 1f, speed = 0.7f + (i % 5) * 0.15f, angle = (i * 137f) % 360f) } }
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Label(stringResource(R.string.cupola))
         Canvas(Modifier.fillMaxWidth().height(70.dp)) {
@@ -245,14 +246,42 @@ private fun CupolaArc(ring: Double, counted: Boolean, valueText: String, modifie
             val d = min(size.width, size.height * 2) - stroke
             val topLeft = Offset((size.width - d) / 2, stroke / 2)
             val arcSize = Size(d, d)
+            val apex = Offset(size.width / 2, stroke / 2)
             drawArc(c.panel2, startAngle = 180f, sweepAngle = 180f, useCenter = false, topLeft = topLeft, size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
-            if (sweep > 0.005f) {
-                drawArc(if (counted) c.gold else c.gold.copy(alpha = 0.45f), startAngle = 180f, sweepAngle = 180f * sweep, useCenter = false, topLeft = topLeft, size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+            if (fill > 0.005f) {
+                val color = if (counted) c.gold else c.gold.copy(alpha = 0.45f)
+                val half = 90f * fill.coerceAtMost(1f)
+                // left half: from the left end (180°) clockwise towards the apex (270°)
+                drawArc(color, startAngle = 180f, sweepAngle = half, useCenter = false, topLeft = topLeft, size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+                // right half: from the right end (0°) counter-clockwise towards the apex
+                drawArc(color, startAngle = 0f, sweepAngle = -half, useCenter = false, topLeft = topLeft, size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+            }
+            if (met && counted) {
+                // the meeting point flickers …
+                val flicker = 0.55f + 0.45f * kotlin.math.sin(clock * 14f).coerceAtLeast(0f)
+                drawCircle(c.gold.copy(alpha = 0.35f * flicker), radius = stroke * 1.6f, center = apex)
+                drawCircle(c.panel.copy(alpha = 0.9f * flicker), radius = stroke * 0.45f, center = apex)
+                // … and sparks fly out of it
+                for (sp in sparks) {
+                    val life = ((clock * sp.speed + sp.seed) % 1f)
+                    val r = stroke * (0.8f + 2.6f * life)
+                    val a = Math.toRadians((sp.angle + clock * 25f).toDouble())
+                    val p = Offset(apex.x + (r * kotlin.math.cos(a)).toFloat(), apex.y - (r * kotlin.math.sin(a)).toFloat().coerceAtLeast(-apex.y) * 0.9f)
+                    drawCircle((if (life < 0.5f) c.gold else c.ok).copy(alpha = (1f - life) * 0.9f), radius = stroke * 0.18f * (1.5f - life), center = p)
+                }
             }
         }
-        Text(valueText, style = t.ringValue, color = c.goldInk, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
+        Text(valueText, style = t.ringValue, color = if (met && counted) c.ok else c.goldInk, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
+        Text(subText, style = t.sub, color = c.dim, maxLines = 1, modifier = Modifier.height(18.dp))
     }
 }
+
+/** One spark of the meeting animation: [seed] phases it, [speed] in lives per second, [angle] degrees. */
+private class Spark(val seed: Float, val speed: Float, val angle: Float)
+
+/** The cupola halves meet at this fill: sparkle, points, vibration. Mirrors HapticsController.MET. */
+private const val MET = 0.9f
+private const val SPARKS = 14
 
 /** A flying dot of the points animation; [t] runs 0→1 over its life. */
 private class Dot(val x: Float, val size: Float, val green: Boolean, val drift: Float) {
@@ -307,7 +336,6 @@ private fun HintRow(hint: HintKey?, modifier: Modifier = Modifier) {
             Text(
                 stringResource(
                     when (hint) {
-                        HintKey.PUSHED -> R.string.hint_pushed
                         HintKey.DRIFT -> R.string.hint_drift
                         HintKey.GOOD -> R.string.hint_good
                     },

@@ -8,7 +8,8 @@ data class SessionFrame(
     val t: Double,
     val f0Hz: Double,
     val cents: Double,
-    val ringNorm: Double,
+    val ringSharePct: Double,
+    val humpDb: Double,
     val splDbfs: Double,
     val score: Double,
     val gate: Gate,
@@ -80,9 +81,9 @@ class SessionAccumulator(
         if (m.score > best) best = m.score
         if (m.streakSeconds > bestStreak) bestStreak = m.streakSeconds
         if (frames % decimation == 1 || decimation == 1) {
-            log += SessionFrame(m.timeSec, m.f0Hz, m.cents, m.ringRatioNorm, m.splDbfs, m.score, m.gate)
+            log += SessionFrame(m.timeSec, m.f0Hz, m.cents, m.ringSharePct, m.humpDb, m.splDbfs, m.score, m.gate)
         }
-        return points.update(m.timeSec, m.score, m.ring)
+        return points.update(m.timeSec, m.ring)
     }
 
     val frameLog: List<SessionFrame> get() = log

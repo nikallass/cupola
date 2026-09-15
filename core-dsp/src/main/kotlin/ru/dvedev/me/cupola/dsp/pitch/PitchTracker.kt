@@ -26,10 +26,14 @@ import kotlin.math.ln
  */
 class PitchTracker(
     private val comb: HarmonicCombRefiner,
+    /** Widest window around the tracked pitch that still counts as the same note (after a gap). */
     val glideOctaves: Double = 0.25,
+    /** Frame-to-frame window: this many octaves plus [glideRate]·(seconds since the last followed frame), capped at [glideOctaves]. */
+    val glideFrameOctaves: Double = 0.06,
+    val glideRate: Double = 0.5,
     val nearScore: Double = 15.0,
     val strongScore: Double = 30.0,
-    val strongCount: Int = 3,
+    val strongCount: Int = 4,
     val jumpSeconds: Double = 0.35,
     val jumpRatio: Double = 1.5,
     /** A leap candidate may be absent this long without restarting its persistence timer. */
@@ -43,8 +47,14 @@ class PitchTracker(
     /** Score points added to the candidate agreeing with YIN, times YIN's confidence. */
     val yinBonus: Double = 25.0,
     val confidentYin: Double = 0.7,
+    /** From this YIN confidence its own candidate is scored leniently (see HarmonicCombRefiner.score). */
+    val lenientYin: Double = 0.4,
     /** EMA factor of [trackStrength] per followed frame. */
     val strengthAlpha: Double = 0.3,
+    /** A lower candidate with at least this fraction of a harmonic multiple's score discounts the multiple … */
+    val octaveSupport: Double = 0.5,
+    /** … by this factor. */
+    val octaveDiscount: Double = 0.5,
 ) {
     private val gridOut = Array(maxCandidates) { HarmonicCombRefiner.Candidate() }
     private val scratch = HarmonicCombRefiner.Candidate()
@@ -95,12 +105,25 @@ class PitchTracker(
                 for (i in 0 until n) if (abs(candidates[i].hz - hz) / hz < 0.03) { dup = true; break }
                 if (dup || n >= candidates.size) continue
                 // the time-domain estimate itself needs no second harmonic (a pure tone)
-                if (comb.scoreAt(hz, spectrum, noise, scratch, minLow = if (r == 1.0) 1 else comb.minLowHarmonics)) {
+                if (comb.scoreAt(hz, spectrum, noise, scratch, minLow = if (r == 1.0) 1 else comb.minLowHarmonics, lenientFundamental = r == 1.0 && yin.confidence >= lenientYin)) {
                     candidates[n].set(scratch); n++
                     if (r == 1.0) yinReject = 0
                 } else if (r == 1.0) yinReject = comb.lastReject
             }
             for (i in 0 until n) if (abs(candidates[i].hz - yin.f0Hz) / yin.f0Hz < 0.03) candidates[i].score += yinBonus * yin.confidence
+        }
+        // octave rule: a series sitting on the 2nd–4th harmonic of a lower candidate explains
+        // only a subset of that candidate's lines — it wins only if the lower one is weak
+        for (i in 0 until n) {
+            val hi = candidates[i]
+            for (j in 0 until n) {
+                val lo = candidates[j]
+                if (lo.hz >= hi.hz * 0.6) continue
+                val ratio = hi.hz / lo.hz
+                val k = Math.round(ratio).toInt()
+                if (k !in 2..4 || abs(ratio - k) > 0.03 * k) continue
+                if (lo.score >= octaveSupport * hi.score) { hi.score *= octaveDiscount; break }
+            }
         }
         candidateCount = n
         return n
@@ -135,9 +158,13 @@ class PitchTracker(
     fun update(yin: PitchEstimate, spectrum: PowerSpectrum, noise: NoiseFloor, timeSec: Double): PitchEstimate {
         val tracking = trackedHz > 0.0 && timeSec - lastGoodTime <= maxGapSeconds
         if (!tracking && trackedHz > 0.0) reset()
+        // a note cannot climb by a quarter octave every 10 ms: the near window opens with time
+        // since the last followed frame, so a chain of neighbouring series does not walk the
+        // track up the harmonics of an orchestral line
+        val near0 = if (tracking) minOf(glideOctaves, glideFrameOctaves + glideRate * (timeSec - lastGoodTime)) else glideOctaves
         val confirmed = tracking && timeSec - trackSince >= confirmSeconds && trackStrength >= strongScore
         val n = gather(yin, spectrum, noise)
-        val yinNear = tracking && yin.found && yin.confidence >= 0.5 && octaves(yin.f0Hz, trackedHz) <= glideOctaves
+        val yinNear = tracking && yin.found && yin.confidence >= 0.5 && octaves(yin.f0Hz, trackedHz) <= near0
         // the time-domain estimate keeps a pending leap alive when the comb misses a frame
         if (!jumpSince.isNaN() && yin.found && yin.confidence >= 0.6 && octaves(yin.f0Hz, jumpTarget) <= glideOctaves) jumpSeen = timeSec
 
@@ -157,7 +184,7 @@ class PitchTracker(
         var near = -1
         if (tracking) {
             for (i in 0 until n) {
-                if (octaves(candidates[i].hz, trackedHz) > glideOctaves) continue
+                if (octaves(candidates[i].hz, trackedHz) > near0) continue
                 if (near < 0 || candidates[i].score > candidates[near].score) near = i
             }
             if (near >= 0 && candidates[near].score < nearScore) near = -1
@@ -173,7 +200,7 @@ class PitchTracker(
 
         // leap bookkeeping: a strong series away from the track must persist
         val b = candidates[best]
-        val far = best != near && octaves(b.hz, trackedHz) > glideOctaves && isStrong(b) && b.score >= jumpRatio * trackStrength && (near < 0 || b.score >= jumpRatio * candidates[near].score)
+        val far = best != near && octaves(b.hz, trackedHz) > near0 && isStrong(b) && b.score >= jumpRatio * trackStrength && (near < 0 || b.score >= jumpRatio * candidates[near].score)
         if (far) {
             val cont = !jumpSince.isNaN() && octaves(b.hz, jumpTarget) <= glideOctaves && timeSec - jumpSeen <= jumpGapSeconds
             if (!cont) jumpSince = timeSec

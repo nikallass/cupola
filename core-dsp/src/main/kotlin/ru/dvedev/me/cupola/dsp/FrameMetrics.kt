@@ -23,10 +23,11 @@ data class FrameMetrics(
     val splDbfs: Double,
     val noiseFloorDbfs: Double,
     val ringRatioDb: Double,
-    /** `RingRatio_norm` — NaN without calibration. */
-    val ringRatioNorm: Double,
+    /** Share of the voice energy (room noise subtracted) in the cupola band, %. */
     val ringSharePct: Double,
     val peakSprDb: Double,
+    /** Band peak over its flanks, dB: > 0 is a hump. */
+    val humpDb: Double,
     /** Median-smoothed (300 ms) count of audible harmonics `k ≥ 2`. */
     val overtoneCount: Int,
     val harmonics: List<Harmonic>,
@@ -39,7 +40,6 @@ data class FrameMetrics(
     val steady: Double,
     val score: Double,
     val streakSeconds: Double,
-    val calibrated: Boolean,
 ) {
     /** Voice present and pitch trusted (`confidence ≥ 0.7`). */
     val voiced: Boolean get() = voice && gate != Gate.LOW_CONFIDENCE && f0Hz > 0

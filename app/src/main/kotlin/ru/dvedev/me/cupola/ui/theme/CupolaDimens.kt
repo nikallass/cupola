@@ -21,6 +21,7 @@ object CupolaDimens {
     val buttonPaddingH = 22.dp
     val buttonPaddingV = 8.dp
     val pausePaddingH = 14.dp
+    val compactButtonPaddingH = 12.dp
     val gearSize = 26.dp
 
     /** Note zone. */
@@ -32,6 +33,8 @@ object CupolaDimens {
     /** Spectrum zone height in portrait; landscape left column width. */
     val spectrumHeight = 270.dp
     val landscapeNoteWidth = 360.dp
+    /** Left column in short landscape (phones held sideways, height < 480 dp). */
+    val shortLandscapeNoteWidth = 330.dp
 
     /** Tablets (sw ≥ 600 dp) get haptics off by default (SPEC §15.5). */
     val tabletMinWidth = 600.dp

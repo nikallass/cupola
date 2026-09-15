@@ -20,10 +20,12 @@ data class DisplayNote(
     val f0Hz: Double = 0.0,
     /** True while the last note is held after voicing stopped. */
     val holding: Boolean = false,
-    /** `RingRatio_norm` smoothed over ~300 ms of voiced frames; NaN without calibration or voice. */
-    val ringNormDb: Double = Double.NaN,
-    /** Share of energy in the cupola band, %, smoothed the same way. */
+    /** The cupola indicator 0..1 (scorer's attack/release-smoothed `ring`); 0 without voice. */
+    val ring: Double = 0.0,
+    /** Share of the voice energy in the cupola band, %, smoothed over ~300 ms; NaN without voice. */
     val ringSharePct: Double = Double.NaN,
+    /** Band hump over its flanks, dB, smoothed the same way; NaN without voice. */
+    val humpDb: Double = Double.NaN,
     /** Audible overtones, typical value over the window. */
     val overtones: Int = 0,
     /** True when the ring was being counted (all gates open) for most of the window. */
@@ -66,8 +68,9 @@ class NoteDisplaySmoother(
     val state: StateFlow<DisplayNote> = _state.asStateFlow()
     private var candidate = -1
     private var candidateSince = 0.0
-    private var ringEma = Double.NaN
+    private var humpEma = Double.NaN
     private var shareEma = Double.NaN
+    private var ring = 0.0
     private var overtoneSum = 0
     private var overtoneN = 0
     private var openFrames = 0
@@ -86,10 +89,11 @@ class NoteDisplaySmoother(
         if (metrics.voice) {
             voiceFrames++
             if (metrics.gate == ru.dvedev.me.cupola.dsp.score.Gate.OPEN) openFrames++ else gateCounts[metrics.gate.ordinal]++
-            val r = metrics.ringRatioNorm
-            if (!r.isNaN()) ringEma = if (ringEma.isNaN()) r else ringEma + (r - ringEma) * emaAlpha
+            val h = metrics.humpDb
+            if (!h.isNaN()) humpEma = if (humpEma.isNaN()) h else humpEma + (h - humpEma) * emaAlpha
             shareEma = if (shareEma.isNaN()) metrics.ringSharePct else shareEma + (metrics.ringSharePct - shareEma) * emaAlpha
         }
+        ring = metrics.ring
         if (trusted) { overtoneSum += metrics.overtoneCount; overtoneN++ }
         if (++frames % publishEvery != 0) return
         val counted = voiceFrames > 0 && openFrames * 2 >= voiceFrames
@@ -151,11 +155,11 @@ class NoteDisplaySmoother(
                 candidate = -1
             }
             val centsOut = ((meanP - best) * 100.0).coerceIn(-75.0, 75.0)
-            _state.value = DisplayNote(voiced = true, note = Note(best), cents = centsOut, f0Hz = sumF / n, holding = false, ringNormDb = ringEma, ringSharePct = shareEma, overtones = overtones, counted = counted, gate = blocking)
+            _state.value = DisplayNote(voiced = true, note = Note(best), cents = centsOut, f0Hz = sumF / n, holding = false, ring = ring, ringSharePct = shareEma, humpDb = humpEma, overtones = overtones, counted = counted, gate = blocking)
         } else if (previous.voiced && metrics.timeSec - lastVoicedAt < holdSeconds) {
-            _state.value = previous.copy(holding = true, ringNormDb = ringEma, ringSharePct = shareEma, counted = counted, gate = blocking)
+            _state.value = previous.copy(holding = true, ring = ring, ringSharePct = shareEma, humpDb = humpEma, counted = counted, gate = blocking)
         } else {
-            _state.value = DisplayNote(ringNormDb = if (metrics.voice) ringEma else Double.NaN, ringSharePct = if (metrics.voice) shareEma else Double.NaN, counted = counted, gate = blocking)
+            _state.value = DisplayNote(ring = ring, ringSharePct = if (metrics.voice) shareEma else Double.NaN, humpDb = if (metrics.voice) humpEma else Double.NaN, counted = counted, gate = blocking)
         }
     }
 

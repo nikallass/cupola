@@ -12,10 +12,10 @@ class SessionTest {
     private fun frame(t: Double, score: Double, ring: Double, voice: Boolean = true, streak: Double = 0.0) = FrameMetrics(
         timeSec = t, voice = voice, f0Hz = if (voice) 220.0 else 0.0, confidence = if (voice) 0.9 else 0.0,
         note = Note(57), cents = if (voice) 3.0 else Double.NaN, splDbfs = -20.0, noiseFloorDbfs = -60.0,
-        ringRatioDb = -10.0, ringRatioNorm = -8.0, ringSharePct = 12.0, peakSprDb = -20.0, overtoneCount = 8,
+        ringRatioDb = -10.0, ringSharePct = 12.0, peakSprDb = -20.0, humpDb = 3.0, overtoneCount = 8,
         harmonics = emptyList(), pitchSd = 4.0, driftCentsPerSec = 0.0, vibrato = Vibrato.NONE,
         gate = if (voice) Gate.OPEN else Gate.NO_VOICE, ring = ring, pitch = 0.9, steady = 0.8, score = score,
-        streakSeconds = streak, calibrated = true,
+        streakSeconds = streak,
     )
 
     @Test
@@ -31,7 +31,7 @@ class SessionTest {
         var t = 0.0
         var awards = 0
         while (t < 10.0) {
-            if (p.update(t, 0.8, 1.0) > 0) awards++
+            if (p.update(t, 1.0) > 0) awards++
             t += 0.01
         }
         // 10 s / 0.12 s ≈ 83; the 10 ms tick quantises each interval up to 0.13 s
@@ -40,11 +40,11 @@ class SessionTest {
 
         // below threshold nothing is awarded and the timer restarts
         p.reset()
-        repeat(100) { p.update(it * 0.01, 0.3, 1.0) }
+        repeat(100) { p.update(it * 0.01, 0.3) }
         assertEquals(0, p.total)
-        assertEquals(0, p.update(1.0, 0.8, 0.0)) // crossing: no immediate award
-        assertEquals(0, p.update(1.5, 0.8, 0.0))
-        assertEquals(1, p.update(1.6, 0.8, 0.0))
+        assertEquals(0, p.update(1.0, 0.5)) // crossing: no immediate award, interval 0.36 s
+        assertEquals(0, p.update(1.3, 0.5))
+        assertEquals(2, p.update(1.4, 0.5)) // portion 1 + round(2·0.5)
     }
 
     @Test

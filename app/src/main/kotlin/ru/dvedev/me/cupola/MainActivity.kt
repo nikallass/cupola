@@ -41,12 +41,12 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.dvedev.me.cupola.analysis.AnalysisViewModel
-import ru.dvedev.me.cupola.calibration.CalibrationViewModel
+import ru.dvedev.me.cupola.roomnoise.RoomNoiseViewModel
 import ru.dvedev.me.cupola.settings.applyLanguage
 import ru.dvedev.me.cupola.ui.analysis.AnalysisScreen
 import ru.dvedev.me.cupola.ui.analysis.CentsThresholds
 import ru.dvedev.me.cupola.ui.analysis.LocalCentsThresholds
-import ru.dvedev.me.cupola.ui.calibration.CalibrationScreen
+import ru.dvedev.me.cupola.ui.roomnoise.RoomNoiseScreen
 import ru.dvedev.me.cupola.ui.components.PillButton
 import ru.dvedev.me.cupola.ui.components.PillStyle
 import ru.dvedev.me.cupola.ui.onboarding.OnboardingScreen
@@ -84,7 +84,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { ONBOARDING, ANALYSIS, SETTINGS, CALIBRATION, TOKENS }
+private enum class Screen { ONBOARDING, ANALYSIS, SETTINGS, ROOM_NOISE, TOKENS }
 
 @Composable
 private fun Root(onLanguageChanged: () -> Unit) {
@@ -118,10 +118,10 @@ private fun Root(onLanguageChanged: () -> Unit) {
     if (screen == Screen.ONBOARDING) {
         OnboardingScreen(
             graph,
-            onCalibrate = {
+            onRoomNoise = {
                 granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
                 returnTo = Screen.ANALYSIS
-                screen = Screen.CALIBRATION
+                screen = Screen.ROOM_NOISE
             },
             onFinished = {
                 granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
@@ -139,27 +139,27 @@ private fun Root(onLanguageChanged: () -> Unit) {
         }
         return
     }
-    fun openCalibration(from: Screen) {
+    fun openRoomNoise(from: Screen) {
         returnTo = from
-        screen = Screen.CALIBRATION
+        screen = Screen.ROOM_NOISE
     }
     when (screen) {
         Screen.ONBOARDING -> Unit // handled above
-        Screen.ANALYSIS -> AnalysisScreen(vm, onSettings = { screen = Screen.SETTINGS }, onCalibrate = { openCalibration(Screen.ANALYSIS) })
+        Screen.ANALYSIS -> AnalysisScreen(vm, onSettings = { screen = Screen.SETTINGS }, onRoomNoise = { openRoomNoise(Screen.ANALYSIS) })
         Screen.SETTINGS -> {
             BackHandler { screen = Screen.ANALYSIS }
             SettingsScreen(
                 graph,
                 onBack = { screen = Screen.ANALYSIS },
-                onCalibrate = { openCalibration(Screen.SETTINGS) },
+                onRoomNoise = { openRoomNoise(Screen.SETTINGS) },
                 onTokens = { screen = Screen.TOKENS },
                 onLanguageChanged = onLanguageChanged,
             )
         }
-        Screen.CALIBRATION -> {
-            val cvm: CalibrationViewModel = viewModel { CalibrationViewModel(graph) }
-            BackHandler { cvm.restart(); screen = returnTo }
-            CalibrationScreen(cvm, band = settings.band, onDone = { cvm.restart(); screen = returnTo }, onBack = { screen = returnTo })
+        Screen.ROOM_NOISE -> {
+            val rvm: RoomNoiseViewModel = viewModel { RoomNoiseViewModel(graph) }
+            BackHandler { rvm.restart(); screen = returnTo }
+            RoomNoiseScreen(rvm, band = settings.band, onDone = { rvm.restart(); screen = returnTo }, onBack = { screen = returnTo })
         }
         Screen.TOKENS -> {
             BackHandler { screen = Screen.SETTINGS }

@@ -27,8 +27,8 @@
     <string name="tap_to_pin">tap to pin the note</string>
     <string name="target_prefix">target</string>
     <string name="cupola">cupola</string>
-    <string name="cupola_vs_baseline">cupola %1$s dB vs baseline</string>
-    <string name="no_calibration">not calibrated</string>
+    <string name="hump_fmt">hump %1$s dB</string>
+    <string name="cupola_readout">cupola %1$s %% · hump %2$s dB</string>
     <string name="spectrogram_axis_hint_lin">lin 80 Hz – 8 kHz</string>
     <string name="spectrogram_axis_hint">log 80 Hz – 8 kHz</string>
     <string name="sub_silence">silence</string>
@@ -43,7 +43,6 @@
     <string name="mic_rationale">Cupola needs the microphone to hear your voice. Audio never leaves the device.</string>
     <string name="mic_allow">Allow microphone</string>
 
-    <string name="hint_pushed">Louder ≠ brighter. Softer.</string>
     <string name="hint_drift">The note drifts. Stability first.</string>
     <string name="hint_good">In position. Don\'t add.</string>
 
@@ -53,8 +52,6 @@
     <string name="unit_s">s</string>
     <string name="voice_custom">custom band</string>
 
-    <string name="need_calibration_title">Calibration needed</string>
-    <string name="need_calibration_body">Points are relative to your own voice on this device. Calibration takes 6 seconds: 2 s of silence and 4 s of an "ah".</string>
     <string name="summary_title">Session</string>
     <string name="summary_duration">Duration</string>
     <string name="summary_voiced">voice %1$s</string>
@@ -66,42 +63,38 @@
     <string name="summary_ring">Cupola (mean)</string>
     <string name="summary_pitch">Accuracy (mean)</string>
     <string name="summary_steady">Steadiness (mean)</string>
-    <string name="summary_note">Every number is relative to your calibration; do not compare with other people.</string>
+    <string name="summary_note">The cupola is scored by the share of energy in the band and its hump over the neighbours — loudness is never rewarded. Compare yourself with yourself.</string>
+    <!-- room noise -->
+    <string name="noise_title">Room noise</string>
+    <string name="noise_step_intro">step 0</string>
+    <string name="noise_step_measuring">silence</string>
+    <string name="noise_step_result">result</string>
+    <string name="noise_intro_title">Measuring the room</string>
+    <string name="noise_intro_body">3 seconds of silence: do not sing or talk, let the room be as it usually is — ventilation, street, computer. Hold the device the way you practise.</string>
+    <string name="noise_intro_why">The noise profile is subtracted from the spectrum: noise inside the cupola band earns no points and noise outside it does not eat your cupola. Redo it after changing room or device.</string>
+    <string name="noise_begin">Begin</string>
+    <string name="noise_measuring_title">Silence</string>
+    <string name="noise_measuring_body">Stay quiet: measuring the room.</string>
+    <string name="noise_level">level</string>
+    <string name="noise_result_title">Done</string>
+    <string name="noise_result_level">Room noise</string>
+    <string name="noise_result_body">The profile is stored and subtracted from every spectrum.</string>
+    <string name="noise_warn_noisy">The room is noisy (above −45 dBFS): quiet singing will be lost in the noise.</string>
+    <string name="noise_save">Save</string>
+    <string name="noise_repeat">Repeat</string>
 
-    <string name="calibration_title">Calibration</string>
-    <string name="cal_step_intro">step 0</string>
-    <string name="cal_step_silence">silence</string>
-    <string name="cal_step_vowel">"ah"</string>
-    <string name="cal_step_result">result</string>
-    <string name="cal_intro_title">How it works</string>
-    <string name="cal_intro_body">Hold the device the way you do in practice — in hand or on a stand, about 30 cm from your mouth. Keep the distance the same for calibration and singing. First 2 seconds of silence, then 4 seconds of "ah" on a comfortable note at your usual volume.</string>
-    <string name="cal_intro_relative">All metrics are relative: another device, distance or room needs a new calibration.</string>
-    <string name="cal_begin">Begin</string>
-    <string name="cal_silence_title">Silence</string>
-    <string name="cal_silence_body">Stay quiet: measuring the room.</string>
-    <string name="cal_vowel_title">Sing "ah"</string>
-    <string name="cal_vowel_body">Comfortable note, usual volume, steady until the count ends.</string>
-    <string name="cal_level">level</string>
-    <string name="cal_result_title">Done</string>
-    <string name="cal_result_noise">Room noise</string>
-    <string name="cal_result_spl">Your loudness</string>
-    <string name="cal_result_ring">Cupola (baseline)</string>
-    <string name="cal_result_voiced">Voice confident</string>
-    <string name="cal_repeat_title">Didn\'t work — try again</string>
-    <string name="cal_warn_noisy">The room is noisy (above −45 dBFS): results will be less reliable.</string>
-    <string name="cal_warn_unstable">The voice was unsteady more than half of the time. Sing steadier and closer.</string>
-    <string name="cal_save">Save</string>
-    <string name="cal_repeat">Repeat</string>
 
     <string name="settings_voice">voice</string>
     <string name="settings_voice_type">Voice type</string>
     <string name="settings_voice_type_help">Sets the cupola band — where the singer\'s formant is looked for: lower for bass, higher for soprano. Your teacher decides your voice type; here it only picks the band. You can set a custom band.</string>
     <string name="settings_band_lo">Cupola lower edge</string>
     <string name="settings_band_hi">Cupola upper edge</string>
-    <string name="settings_band_help">The band where "ring" is measured. 50 Hz steps, at least 200 Hz wide. Each band has its own calibration.</string>
-    <string name="settings_calibration">Calibration</string>
-    <string name="settings_calibration_help">Your personal baseline: room noise, your loudness and cupola on an "ah". Stored per voice type or band. Redo it after changing device, distance or room.</string>
-    <string name="settings_calibrate">Calibrate</string>
+    <string name="settings_band_help">The band where "ring" is measured. 50 Hz steps, at least 200 Hz wide.</string>
+    <string name="settings_room_noise">Room noise</string>
+    <string name="settings_room_noise_help">3 seconds of silence: the room profile is subtracted from the spectrum so noise neither earns points nor hides the cupola. Redo it after changing room or device.</string>
+    <string name="settings_measure_noise">Measure</string>
+    <string name="settings_forget_noise">Forget</string>
+    <string name="no_room_noise">not measured</string>
     <string name="settings_a4">A4 tuning</string>
     <string name="settings_a4_help">Frequency of A4. Standard is 440 Hz; baroque 415, "432" and so on go here.</string>
     <string name="settings_display">display</string>
@@ -150,8 +143,10 @@
     <string name="settings_cents_help">Deviation in cents up to which the note counts as in tune (green) and tolerable (yellow). Beyond that — red.</string>
     <string name="settings_confidence">Pitch confidence</string>
     <string name="settings_confidence_help">Minimum pitch-detector confidence for a note to count. Lower — more false notes; higher — gaps on quiet sound.</string>
-    <string name="settings_spl_k">Loudness normalisation k</string>
-    <string name="settings_spl_k_help">How many dB the cupola "naturally" grows per +1 dB of loudness. Subtracted so loudness is never rewarded. 0.7 per the literature.</string>
+    <string name="settings_ring_share">Cupola: share for maximum</string>
+    <string name="settings_ring_share_help">What share of the voice energy (80 Hz – 8 kHz, room noise removed) must sit in the cupola band for the arc to close. Lower — easier, higher — stricter.</string>
+    <string name="settings_ring_hump">Cupola: hump for maximum</string>
+    <string name="settings_ring_hump_help">How many dB the peak in the cupola band must rise above the neighbouring spectrum for the arc to close. Loudness does not affect it.</string>
     <string name="settings_w_ring">Weight: cupola</string>
     <string name="settings_w_pitch">Weight: accuracy</string>
     <string name="settings_w_steady">Weight: steadiness</string>
@@ -166,21 +161,18 @@
 
     <string name="ob_step">step %1$d of %2$d</string>
     <string name="ob_1_title">Everything is relative</string>
-    <string name="ob_1_body">Cupola shows what happens to the sound: the note, the overtones and the "ring" — a bright band around 3 kHz that lets the voice carry. Every number is relative to your own voice on this device. Compare yourself with yesterday\'s you, not with others.</string>
+    <string name="ob_1_body">Cupola shows what happens to the sound: the note, the overtones and the "ring" — a bright band around 3 kHz that lets the voice carry. The cupola is credited for the share of energy in that band and its hump over the neighbours, not for loudness. Compare yourself with yesterday\'s you, not with others.</string>
     <string name="ob_1_soft">The app never rewards loudness. A quiet ringing sound is worth more than a loud boomy one.</string>
     <string name="ob_1_haptics">Vibration can leak into the microphone: hold the phone or put it on something soft.</string>
     <string name="ob_2_title">Microphone</string>
     <string name="ob_2_body">Audio is analysed on the device and never sent anywhere.</string>
     <string name="ob_3_title">Voice type</string>
     <string name="ob_3_body">Only used for the cupola band. Not sure — leave "not set"; you can change it in settings.</string>
-    <string name="ob_4_title">Calibration</string>
-    <string name="ob_4_body">6 seconds: 2 s of silence and 4 s of an "ah". Analysis works without it, but points are not counted.</string>
+    <string name="ob_4_title">Room noise</string>
+    <string name="ob_4_body">3 seconds of silence to subtract the room from the spectrum. Everything works without it; the noise profile then adapts on its own.</string>
     <string name="ob_next">Next</string>
-    <string name="ob_calibrate_now">Calibrate now</string>
+    <string name="ob_measure_now">Measure now</string>
     <string name="ob_later">Later</string>
-    <string name="gate_not_calibrated">ring not counted: no calibration</string>
-    <string name="gate_pushed">ring not counted: louder than calibration</string>
-    <string name="gate_unstable">ring not counted: pitch drifts</string>
-    <string name="gate_low_confidence">ring not counted: no confident pitch</string>
-    <string name="gate_sovt">ring not counted: warm-up</string>
+    <string name="gate_low_confidence">not counted: pitch unsure</string>
+    <string name="gate_sovt">not counted: warm-up</string>
 </resources>

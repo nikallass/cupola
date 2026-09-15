@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 import ru.dvedev.me.cupola.analysis.SessionController
 import ru.dvedev.me.cupola.audio.AudioEngine
 import ru.dvedev.me.cupola.dsp.AnalyzerConfig
-import ru.dvedev.me.cupola.dsp.calibration.Calibration
+import ru.dvedev.me.cupola.dsp.metrics.RoomNoise
 import ru.dvedev.me.cupola.dsp.session.SessionSummary
 import ru.dvedev.me.cupola.haptics.HapticsController
 import ru.dvedev.me.cupola.service.AnalysisService
@@ -36,24 +36,22 @@ class AppGraph(private val app: Application) {
 
     private val isTablet: Boolean = isTabletDevice(app)
 
-    /** Settings + the calibration for the current voice/band, or null. */
     val settingsState: StateFlow<Settings> = settings.settings.stateIn(scope, SharingStarted.Eagerly, Settings())
-    val calibrationState: StateFlow<Calibration?> = combine(settings.settings, settings.calibrations) { s, cals -> cals[s.calibrationKey] }
-        .stateIn(scope, SharingStarted.Eagerly, null)
+    /** The measured room noise profile, or null (the floor then adapts on its own). */
+    val roomNoiseState: StateFlow<RoomNoise?> = settings.roomNoise.stateIn(scope, SharingStarted.Eagerly, null)
 
     init {
         engine.addListener(session)
-        // keep the analyzer in sync with settings and the current calibration
+        if (app.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) installPitchTrace()
+        // keep the analyzer in sync with settings and the room profile
         scope.launch {
-            combine(settings.settings, calibrationState) { s, cal -> s to cal }.collect { (s, cal) ->
+            combine(settings.settings, roomNoiseState) { s, rn -> s to rn }.collect { (s, rn) ->
                 val restart = engine.config.fftSize != s.fftSize
                 engine.updateConfig {
                     it.copy(
                         band = s.band,
-                        calibration = cal,
                         a4Hz = s.a4Hz.toDouble(),
                         confidenceMin = s.confidenceMin,
-                        splNormalisationK = s.splK,
                         fftSize = s.fftSize, // hop stays 480 (10 ms) for both 2048 and 4096 (SPEC §4)
                         scoreParams = s.scoreParams(),
                     )
@@ -62,6 +60,21 @@ class AppGraph(private val app: Application) {
                     engine.stop()
                     engine.start(s.audioSource)
                 }
+                val a = engine.analyzer
+                if (rn != null) a.pendingRoomNoise = rn.resampled(a.sampleRate, a.fftSize)
+            }
+        }
+    }
+
+    /** Debug builds: every 10th voiced frame of the pitch tracker goes to logcat (`CupolaTrace`). */
+    private fun installPitchTrace() {
+        var n = 0
+        engine.pitchTrace = { raw, out ->
+            if (raw.found && ++n % 10 == 0) {
+                val t = engine.analyzer.pitchTracker
+                val sb = StringBuilder("yin %6.1f/%.2f -> %6.1f/%.2f trk %6.1f/%2.0f %-5s r%d |".format(raw.f0Hz, raw.confidence, out.f0Hz, out.confidence, t.trackedHz, t.trackStrength, t.lastDecision, t.yinReject))
+                for (i in 0 until t.candidateCount) sb.append(" %.0f:%.0f/%d".format(t.candidates[i].hz, t.candidates[i].score, t.candidates[i].count))
+                android.util.Log.d("CupolaTrace", sb.toString())
             }
         }
     }
@@ -75,7 +88,7 @@ class AppGraph(private val app: Application) {
         session.start()
         AnalysisService.start(app)
         haptics.start(
-            score = { engine.metrics.value?.score ?: 0.0 },
+            ring = { engine.metrics.value?.ring ?: 0.0 },
             enabled = { session.isActive && !session.state.value.paused && hapticsEnabled() },
         )
     }

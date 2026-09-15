@@ -66,15 +66,16 @@ fun TopBar(
             .padding(horizontal = CupolaDimens.paddingH, vertical = CupolaDimens.topBarPaddingV),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Label(stringResource(R.string.app_name), color = c.ink)
+        // phones (< 420 dp): the brand and the band go, so time · points · Pause · Start · gear always fit
         if (!compact) {
+            Label(stringResource(R.string.app_name), color = c.ink)
             Label(" · ")
             Label(if (customBand) stringResource(R.string.voice_custom) else voiceTypeName(voiceType))
             Label(" · ")
             Label("%.1f–%.1f ".format(band.loHz / 1000, band.hiHz / 1000) + stringResource(R.string.unit_khz))
         }
         Spacer(Modifier.weight(1f))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 14.dp)) {
             Text(formatTime(session.elapsedSec), style = t.stats, color = if (session.active) c.ink else c.dim)
             Text(session.points.toString(), style = t.stats, color = c.goldInk)
             PillButton(
@@ -82,11 +83,13 @@ fun TopBar(
                 onClick = onPause,
                 style = PillStyle.Outline,
                 active = session.paused,
+                compact = compact,
             )
             PillButton(
                 text = stringResource(if (session.active) R.string.action_stop else R.string.action_start),
                 onClick = onStartStop,
                 style = if (session.active) PillStyle.Muted else PillStyle.Primary,
+                compact = compact,
             )
             Box(
                 Modifier

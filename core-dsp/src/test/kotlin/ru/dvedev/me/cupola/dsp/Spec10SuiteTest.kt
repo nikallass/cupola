@@ -1,6 +1,5 @@
 package ru.dvedev.me.cupola.dsp
 
-import ru.dvedev.me.cupola.dsp.calibration.Calibration
 import ru.dvedev.me.cupola.dsp.metrics.VibratoKind
 import ru.dvedev.me.cupola.dsp.metrics.VoiceType
 import ru.dvedev.me.cupola.dsp.score.Gate
@@ -21,8 +20,8 @@ class Spec10SuiteTest {
     private val fs = 48_000
     private val room = 0.0005 // −66 dBFS white noise so the noise floor initialises
 
-    private fun run(signal: DoubleArray, calibration: Calibration? = null, block: (FrameMetrics) -> Unit) {
-        val analyzer = Analyzer(AnalyzerConfig(sampleRate = fs, calibration = calibration))
+    private fun run(signal: DoubleArray, block: (FrameMetrics) -> Unit) {
+        val analyzer = Analyzer(AnalyzerConfig(sampleRate = fs))
         val input = Signals.mix(Signals.whiteNoise(1.0 + signal.size.toDouble() / fs, fs, rms = room), Signals.concat(Signals.silence(1.0, fs), signal))
         analyzer.push(input) { m, _ -> if (m.timeSec > 1.5) block(m) }
     }
@@ -77,28 +76,29 @@ class Spec10SuiteTest {
     }
 
     @Test
-    fun `plus 10 dB in the ring band and calibrated ring score`() {
+    fun `a hump in the ring band earns the ring regardless of loudness`() {
         val band = VoiceType.UNSET.band
-        val plainSpec = VoiceSpec(PitchContour.Constant(220.0), tiltDbPerOctave = -9.0, amplitude = 0.2, normalise = false)
+        val plainSpec = VoiceSpec(PitchContour.Constant(220.0), tiltDbPerOctave = -6.0, amplitude = 0.2, normalise = false)
         val plain = Signals.harmonicVoice(plainSpec, 2.0, fs)
-        val boosted = Signals.harmonicVoice(plainSpec.copy(bandGains = listOf(BandGain(band.loHz, band.hiHz, 10.0))), 2.0, fs)
+        val boosted = Signals.harmonicVoice(plainSpec.copy(bandGains = listOf(BandGain(band.loHz, band.hiHz, 12.0))), 2.0, fs)
 
-        val plainRing = mutableListOf<Double>()
-        var spl = 0.0
-        run(plain) { m -> plainRing += m.ringRatioDb; spl = m.splDbfs }
-        val baseline = Calibration(band, -66.0, plainRing.sorted()[plainRing.size / 2], spl, 1.0, 0)
-
-        val boostedRing = mutableListOf<Double>()
+        var plainRing = 0.0
+        var plainHump = 0.0
+        run(plain) { m -> if (m.timeSec > 2.5) { plainRing = m.ring; plainHump = m.humpDb } }
+        var loudRing = 0.0
+        var loudShare = 0.0
+        var loudHump = 0.0
         var lastScore = 0.0
-        var lastRing = 0.0
-        run(boosted, baseline) { m ->
-            boostedRing += m.ringRatioDb
-            if (m.timeSec > 2.5) { lastScore = m.score; lastRing = m.ring }
-            assertTrue(m.calibrated)
-        }
-        assertEquals(10.0, boostedRing.sorted()[boostedRing.size / 2] - baseline.ringRatioDb, 1.0)
-        assertEquals(1.0, lastRing, 0.05) // +10 dB ≥ targetGain 6 dB → full ring
+        run(boosted) { m -> if (m.timeSec > 2.5) { loudRing = m.ring; loudShare = m.ringSharePct; loudHump = m.humpDb; lastScore = m.score } }
+        var quietRing = 0.0
+        run(Signals.gain(boosted, -20.0)) { m -> if (m.timeSec > 2.5) quietRing = m.ring }
+
+        assertEquals(12.0, loudHump - plainHump, 1.5)
+        assertTrue(loudRing > plainRing + 0.3, "boosted ring $loudRing vs plain $plainRing")
+        assertTrue(loudShare > 12.0, "share $loudShare")
+        assertEquals(1.0, loudRing, 0.05) // +12 dB hump with an eighth of the energy → full ring
         assertTrue(lastScore > 0.9, "score $lastScore")
+        assertEquals(loudRing, quietRing, 0.1) // 20 dB quieter: the same cupola
     }
 
     @Test

@@ -30,8 +30,8 @@
     <string name="tap_to_pin">тап — закрепить ноту</string>
     <string name="target_prefix">цель</string>
     <string name="cupola">купол</string>
-    <string name="cupola_vs_baseline">купол %1$s dB к калибровке</string>
-    <string name="no_calibration">нет калибровки</string>
+    <string name="hump_fmt">горб %1$s dB</string>
+    <string name="cupola_readout">купол %1$s %% · горб %2$s dB</string>
     <string name="spectrogram_axis_hint_lin">лин 80 Гц – 8 кГц</string>
     <string name="spectrogram_axis_hint">лог 80 Гц – 8 кГц</string>
     <string name="sub_silence">тишина</string>
@@ -48,7 +48,6 @@
     <string name="mic_allow">Разрешить микрофон</string>
 
     <!-- hints (SPEC §7a) -->
-    <string name="hint_pushed">Громче ≠ звонче. Тише.</string>
     <string name="hint_drift">Нота плывёт. Сначала стабильность.</string>
     <string name="hint_good">В позиции. Не добавляй.</string>
 
@@ -60,8 +59,6 @@
     <string name="voice_custom">свой диапазон</string>
 
     <!-- session -->
-    <string name="need_calibration_title">Нужна калибровка</string>
-    <string name="need_calibration_body">Очки считаются относительно вашего голоса на этом устройстве. Калибровка занимает 6 секунд: 2 с тишины и 4 с звука «а».</string>
     <string name="summary_title">Сессия</string>
     <string name="summary_duration">Длительность</string>
     <string name="summary_voiced">голос %1$s</string>
@@ -73,33 +70,26 @@
     <string name="summary_ring">Купол (средний)</string>
     <string name="summary_pitch">Точность (средняя)</string>
     <string name="summary_steady">Ровность (средняя)</string>
-    <string name="summary_note">Все числа — относительно вашей калибровки, сравнивать с другими людьми нельзя.</string>
+    <string name="summary_note">Купол считается по доле энергии в полосе и по горбу над соседями — громкость не награждается. Сравнивайте себя с собой.</string>
 
-    <!-- calibration -->
-    <string name="calibration_title">Калибровка</string>
-    <string name="cal_step_intro">шаг 0</string>
-    <string name="cal_step_silence">тишина</string>
-    <string name="cal_step_vowel">звук «а»</string>
-    <string name="cal_step_result">итог</string>
-    <string name="cal_intro_title">Как это работает</string>
-    <string name="cal_intro_body">Держите устройство как обычно на занятии — в руке или на подставке, примерно в 30 см от рта. Не меняйте расстояние между калибровкой и пением. Сначала 2 секунды тишины, затем 4 секунды звука «а» на удобной ноте, обычной громкостью.</string>
-    <string name="cal_intro_relative">Все метрики относительные: другое устройство, расстояние или комната — новая калибровка.</string>
-    <string name="cal_begin">Начать</string>
-    <string name="cal_silence_title">Тишина</string>
-    <string name="cal_silence_body">Не шумите: измеряем фон комнаты.</string>
-    <string name="cal_vowel_title">Спойте «а»</string>
-    <string name="cal_vowel_body">Удобная нота, обычная громкость, ровно до конца отсчёта.</string>
-    <string name="cal_level">уровень</string>
-    <string name="cal_result_title">Готово</string>
-    <string name="cal_result_noise">Шум комнаты</string>
-    <string name="cal_result_spl">Ваша громкость</string>
-    <string name="cal_result_ring">Купол (база)</string>
-    <string name="cal_result_voiced">Голос уверенно</string>
-    <string name="cal_repeat_title">Не получилось — повторите</string>
-    <string name="cal_warn_noisy">В комнате шумно (выше −45 dBFS): результаты будут менее надёжны.</string>
-    <string name="cal_warn_unstable">Голос был неуверенным больше половины времени. Спойте ровнее и ближе.</string>
-    <string name="cal_save">Сохранить</string>
-    <string name="cal_repeat">Повторить</string>
+    <!-- room noise -->
+    <string name="noise_title">Шум комнаты</string>
+    <string name="noise_step_intro">шаг 0</string>
+    <string name="noise_step_measuring">тишина</string>
+    <string name="noise_step_result">итог</string>
+    <string name="noise_intro_title">Замер шума комнаты</string>
+    <string name="noise_intro_body">3 секунды тишины: не пойте и не говорите, пусть будет обычный фон комнаты — вентиляция, улица, компьютер. Держите устройство так, как будете заниматься.</string>
+    <string name="noise_intro_why">Профиль шума вычитается из спектра: шум в полосе купола не даст лишних очков, а шум вне её не «съест» ваш купол. Переснимите, если сменили комнату или устройство.</string>
+    <string name="noise_begin">Начать</string>
+    <string name="noise_measuring_title">Тишина</string>
+    <string name="noise_measuring_body">Не шумите: измеряем фон комнаты.</string>
+    <string name="noise_level">уровень</string>
+    <string name="noise_result_title">Готово</string>
+    <string name="noise_result_level">Шум комнаты</string>
+    <string name="noise_result_body">Профиль сохранится и будет вычитаться из каждого спектра.</string>
+    <string name="noise_warn_noisy">В комнате шумно (выше −45 dBFS): тихое пение будет теряться в шуме.</string>
+    <string name="noise_save">Сохранить</string>
+    <string name="noise_repeat">Повторить</string>
 
     <!-- settings -->
     <string name="settings_voice">голос</string>
@@ -107,10 +97,12 @@
     <string name="settings_voice_type_help">Определяет полосу «купола» — где ищем певческую форманту: бас ниже, сопрано выше. Тип голоса определяет преподаватель; здесь он нужен только для полосы. Можно задать свой диапазон.</string>
     <string name="settings_band_lo">Нижняя граница купола</string>
     <string name="settings_band_hi">Верхняя граница купола</string>
-    <string name="settings_band_help">Полоса, в которой считается «звон». Шаг 50 Гц, ширина не меньше 200 Гц. Для каждой полосы своя калибровка.</string>
-    <string name="settings_calibration">Калибровка</string>
-    <string name="settings_calibration_help">Личная база: шум комнаты, ваша громкость и купол на звуке «а». Хранится по типу голоса или диапазону. Переснимите, если сменили устройство, расстояние или комнату.</string>
-    <string name="settings_calibrate">Калибровать</string>
+    <string name="settings_band_help">Полоса, в которой считается «звон». Шаг 50 Гц, ширина не меньше 200 Гц.</string>
+    <string name="settings_room_noise">Шум комнаты</string>
+    <string name="settings_room_noise_help">3 секунды тишины: профиль фона комнаты вычитается из спектра, чтобы шум не давал очков и не прятал купол. Переснимите после смены комнаты или устройства.</string>
+    <string name="settings_measure_noise">Замерить</string>
+    <string name="settings_forget_noise">Забыть</string>
+    <string name="no_room_noise">не замерен</string>
     <string name="settings_a4">Строй A4</string>
     <string name="settings_a4_help">Частота ноты ля первой октавы. Стандарт — 440 Гц; барочный строй 415, «432» и т. п. — здесь.</string>
     <string name="settings_display">отображение</string>
@@ -159,8 +151,10 @@
     <string name="settings_cents_help">Отклонение в центах, до которого нота считается точной (зелёный) и терпимой (жёлтый). Дальше — красный.</string>
     <string name="settings_confidence">Уверенность высоты</string>
     <string name="settings_confidence_help">Минимальная уверенность детектора высоты, чтобы нота считалась. Ниже — больше ложных нот, выше — пропуски на тихом звуке.</string>
-    <string name="settings_spl_k">k нормировки громкости</string>
-    <string name="settings_spl_k_help">На сколько dB купол «естественно» растёт при +1 dB громкости. Вычитается, чтобы не награждать громкость. 0,7 по литературе.</string>
+    <string name="settings_ring_share">Купол: доля для максимума</string>
+    <string name="settings_ring_share_help">Какая доля энергии голоса (80 Гц – 8 кГц, без шума комнаты) должна попасть в полосу купола, чтобы дуга сомкнулась. Ниже — легче, выше — строже.</string>
+    <string name="settings_ring_hump">Купол: горб для максимума</string>
+    <string name="settings_ring_hump_help">На сколько dB пик в полосе купола должен возвышаться над соседними участками спектра, чтобы дуга сомкнулась. Громкость на это не влияет.</string>
     <string name="settings_w_ring">Вес: купол</string>
     <string name="settings_w_pitch">Вес: точность</string>
     <string name="settings_w_steady">Вес: ровность</string>
@@ -177,22 +171,19 @@
     <!-- onboarding -->
     <string name="ob_step">шаг %1$d из %2$d</string>
     <string name="ob_1_title">Всё относительно</string>
-    <string name="ob_1_body">Купол показывает, что происходит со звуком: ноту, обертоны и «звон» — яркую полосу около 3 кГц, которая даёт голосу лететь. Все числа считаются относительно вашего собственного голоса на этом устройстве. Сравнивайте себя с собой вчерашним, а не с другими.</string>
+    <string name="ob_1_body">Купол показывает, что происходит со звуком: ноту, обертоны и «звон» — яркую полосу около 3 кГц, которая даёт голосу лететь. Купол засчитывается по доле энергии в этой полосе и по горбу над соседями, а не по громкости. Сравнивайте себя с собой вчерашним, а не с другими.</string>
     <string name="ob_1_soft">Приложение никогда не награждает громкость. Тихий звонкий звук ценнее громкого гулкого.</string>
     <string name="ob_1_haptics">Вибрация может попасть в микрофон: держите телефон в руке или на мягком.</string>
     <string name="ob_2_title">Микрофон</string>
     <string name="ob_2_body">Звук анализируется на устройстве и никуда не отправляется.</string>
     <string name="ob_3_title">Тип голоса</string>
     <string name="ob_3_body">Нужен только для полосы «купола». Не уверены — оставьте «не задан», это можно поменять в настройках.</string>
-    <string name="ob_4_title">Калибровка</string>
-    <string name="ob_4_body">6 секунд: 2 с тишины и 4 с звука «а». Без неё анализ работает, но очки не считаются.</string>
+    <string name="ob_4_title">Шум комнаты</string>
+    <string name="ob_4_body">3 секунды тишины, чтобы вычесть фон комнаты из спектра. Без замера всё работает, профиль шума подстроится сам.</string>
     <string name="ob_next">Дальше</string>
-    <string name="ob_calibrate_now">Калибровать сейчас</string>
+    <string name="ob_measure_now">Замерить сейчас</string>
     <string name="ob_later">Позже</string>
     <!-- why the ring is not counted (note zone header) -->
-    <string name="gate_not_calibrated">купол не считается: нет калибровки</string>
-    <string name="gate_pushed">купол не считается: громче калибровки</string>
-    <string name="gate_unstable">купол не считается: высота плывёт</string>
-    <string name="gate_low_confidence">купол не считается: нет уверенной высоты</string>
-    <string name="gate_sovt">купол не считается: разминка</string>
+    <string name="gate_low_confidence">не считается: нота не уверена</string>
+    <string name="gate_sovt">не считается: разминка</string>
 </resources>

@@ -50,12 +50,15 @@ private const val PX_STEP = 2
 fun SpectrumZone(
     snapshot: SpectrumSnapshot,
     band: RingBand,
-    ringNormDb: Double?,
-    baselineDb: Double?,
+    /** Live cupola readout for the header: share of energy in the band, %, and hump, dB (NaN/null = none). */
+    sharePct: Double?,
+    humpDb: Double?,
     paused: Boolean,
     /** Running maximum of the spectrogram normalisation; the dB axis follows it. */
     topDb: () -> Float,
     logScale: Boolean = true,
+    /** The «grey line = room noise» legend; off on narrow screens where it collides with the readout. */
+    showLegend: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val c = CupolaTheme.colors
@@ -79,16 +82,15 @@ fun SpectrumZone(
                 Label(stringResource(R.string.zone_spectrum))
                 Spacer(Modifier.width(8.dp))
                 Badge(stringResource(R.string.badge_db))
-                Spacer(Modifier.width(10.dp))
-                Label(stringResource(R.string.spectrum_legend))
+                if (showLegend) {
+                    Spacer(Modifier.width(10.dp))
+                    Label(stringResource(R.string.spectrum_legend))
+                }
             },
             right = {
                 Label(
-                    when {
-                        baselineDb == null -> stringResource(R.string.no_calibration)
-                        ringNormDb == null || ringNormDb.isNaN() -> stringResource(R.string.cupola) + " —"
-                        else -> stringResource(R.string.cupola_vs_baseline, formatDb(ringNormDb - baselineDb))
-                    },
+                    if (sharePct == null || sharePct.isNaN() || humpDb == null || humpDb.isNaN()) stringResource(R.string.cupola) + " —"
+                    else stringResource(R.string.cupola_readout, "%.0f".format(sharePct), formatDb(humpDb)),
                 )
             },
         )

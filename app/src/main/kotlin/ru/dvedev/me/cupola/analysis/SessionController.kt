@@ -6,12 +6,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import ru.dvedev.me.cupola.audio.FrameListener
 import ru.dvedev.me.cupola.dsp.FrameMetrics
 import ru.dvedev.me.cupola.dsp.fft.PowerSpectrum
-import ru.dvedev.me.cupola.dsp.score.Gate
 import ru.dvedev.me.cupola.dsp.session.SessionAccumulator
 import ru.dvedev.me.cupola.dsp.session.SessionSummary
 
 /** Which hint is on screen (SPEC §7a, v0.1 subset). Order = priority. */
-enum class HintKey { PUSHED, DRIFT, GOOD }
+enum class HintKey { DRIFT, GOOD }
 
 /** One award of points, for the flying-dots animation. [id] increases monotonically. */
 data class PointsEvent(val id: Long, val portion: Int, val ring: Double, val green: Boolean)
@@ -108,8 +107,7 @@ class SessionController(private val hopSeconds: Double) : FrameListener {
         if (now - lastHintAt < HINT_SECONDS) return
         val candidate = when {
             !m.voice -> null
-            m.gate == Gate.PUSHED -> HintKey.PUSHED
-            m.gate == Gate.UNSTABLE_PITCH -> HintKey.DRIFT
+            m.voiced && !m.pitchSd.isNaN() && m.pitchSd > DRIFT_SD_CENTS -> HintKey.DRIFT
             m.streakSeconds >= 3.0 -> HintKey.GOOD
             else -> null
         }
@@ -122,6 +120,8 @@ class SessionController(private val hopSeconds: Double) : FrameListener {
 
     companion object {
         const val GREEN_SCORE = 0.85
+        /** Median-line pitch SD above which «Нота плывёт» is offered (SPEC §15.5). */
+        const val DRIFT_SD_CENTS = 20.0
         const val HINT_SECONDS = 3.0
         private const val PUBLISH_EVERY = 5
     }

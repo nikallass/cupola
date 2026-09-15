@@ -1,8 +1,8 @@
 package ru.dvedev.me.cupola.dsp.score
 
-import ru.dvedev.me.cupola.dsp.calibration.Calibration
 import ru.dvedev.me.cupola.dsp.metrics.VibratoKind
 import kotlin.math.abs
+import kotlin.math.sqrt
 
 /**
  * Weights of the v0.1 score (SPEC §15.5). This is the single place they live; the
@@ -19,26 +19,27 @@ enum class Gate {
     OPEN,
     NO_VOICE,
     LOW_CONFIDENCE,
-    /** `SPL > SPL_baseline + 12 dB` — «Громче ≠ звонче». Score is 0. */
-    PUSHED,
-    /** `pitchSD > 20 ¢` — «Нота плывёт». */
-    UNSTABLE_PITCH,
     /** SOVT warm-up: ring is undefined by construction. Not selectable in v0.1. */
     SOVT,
-    /** No calibration yet: ring cannot be related to anything. */
-    NOT_CALIBRATED,
 }
 
+/**
+ * Score parameters. Owner decision 2026‑09‑15: no personal calibration and no loudness
+ * gate — the ring is earned by the cupola's *share* of the voice energy and by the *hump*
+ * it makes over its flanks; both are loudness-independent, so one can sing quietly.
+ */
 data class ScoreParams(
     /** Weights of the indicators; defaults are [ScoreWeights], adjustable in advanced settings. */
     val ringWeight: Double = ScoreWeights.RING,
     val pitchWeight: Double = ScoreWeights.PITCH,
     val steadyWeight: Double = ScoreWeights.STEADY,
-    /** dB of `RingRatio_norm` above baseline that counts as full ring. */
-    val targetGainDb: Double = 6.0,
     val confidenceMin: Double = 0.7,
-    val pitchSdMaxCents: Double = 20.0,
-    val pushedMarginDb: Double = 12.0,
+    /** Share of energy in the band that earns nothing … and that earns the full ring, %. */
+    val shareZeroPct: Double = 2.0,
+    val shareFullPct: Double = 12.0,
+    /** Hump over the flanks that earns nothing … and the full ring, dB. */
+    val humpZeroDb: Double = -6.0,
+    val humpFullDb: Double = 6.0,
     val attackSeconds: Double = 0.08,
     val releaseSeconds: Double = 0.4,
     val streakScore: Double = 0.7,
@@ -61,9 +62,10 @@ data class ScoreInput(
     /** SD of the median line over 500 ms; NaN when unknown. */
     val pitchSd: Double,
     val vibratoKind: VibratoKind,
-    /** `RingRatio_norm` of this frame. */
-    val ringRatioNorm: Double,
-    val splDbfs: Double,
+    /** Share of the voice energy in the cupola band, %. */
+    val ringSharePct: Double,
+    /** Band peak over its flanks, dB. */
+    val humpDb: Double,
     val sovt: Boolean = false,
 )
 
@@ -84,45 +86,42 @@ data class ScoreOutput(
 }
 
 /**
- * Gates and indicators of SPEC §6.2 / §15.5. Evaluate once per frame with [frame];
- * the smoothers keep state between calls.
+ * Gates and indicators of SPEC §6.2 / §15.5 (as amended 2026‑09‑15). Evaluate once per
+ * frame with [frame]; the smoothers keep state between calls.
  */
 class Scorer(
     val hopSeconds: Double,
-    calibration: Calibration?,
     val params: ScoreParams = ScoreParams(),
 ) {
-    var calibration: Calibration? = calibration
     private val ringSmooth = AttackRelease(params.attackSeconds, params.releaseSeconds, hopSeconds)
     private val pitchSmooth = AttackRelease(params.attackSeconds, params.releaseSeconds, hopSeconds)
     private val steadySmooth = AttackRelease(params.attackSeconds, params.releaseSeconds, hopSeconds)
     private var streak = 0.0
 
+    /** `ring` before smoothing: geometric mean of the share and hump credits — both are needed. */
+    fun ringRaw(sharePct: Double, humpDb: Double): Double {
+        if (sharePct.isNaN() || humpDb.isNaN()) return 0.0
+        val share = ((sharePct - params.shareZeroPct) / (params.shareFullPct - params.shareZeroPct)).coerceIn(0.0, 1.0)
+        val hump = ((humpDb - params.humpZeroDb) / (params.humpFullDb - params.humpZeroDb)).coerceIn(0.0, 1.0)
+        return sqrt(share * hump)
+    }
+
     fun frame(input: ScoreInput): ScoreOutput {
-        val base = calibration
         val gate = when {
             !input.voice -> Gate.NO_VOICE
             input.confidence < params.confidenceMin -> Gate.LOW_CONFIDENCE
             input.sovt -> Gate.SOVT
-            base == null -> Gate.NOT_CALIBRATED
-            input.splDbfs > base.splDbfs + params.pushedMarginDb -> Gate.PUSHED
-            input.pitchSd.isNaN() || input.pitchSd > params.pitchSdMaxCents -> Gate.UNSTABLE_PITCH
             else -> Gate.OPEN
         }
         val voiced = gate != Gate.NO_VOICE && gate != Gate.LOW_CONFIDENCE
-        val pushed = gate == Gate.PUSHED
 
-        val ringRaw = if (gate == Gate.OPEN && base != null) {
-            ((input.ringRatioNorm - base.ringRatioDb) / params.targetGainDb).coerceIn(0.0, 1.0)
-        } else {
-            0.0
-        }
-        val pitchRaw = if (voiced && !pushed && !input.cents.isNaN()) {
+        val ringRaw = if (gate == Gate.OPEN) ringRaw(input.ringSharePct, input.humpDb) else 0.0
+        val pitchRaw = if (voiced && !input.cents.isNaN()) {
             1.0 - ((abs(input.cents) - params.pitchFullCents) / params.pitchRampCents).coerceIn(0.0, 1.0)
         } else {
             0.0
         }
-        val steadyRaw = if (voiced && !pushed && !input.pitchSd.isNaN()) {
+        val steadyRaw = if (voiced && !input.pitchSd.isNaN()) {
             val s = 1.0 - (input.pitchSd / params.steadySdCents).coerceIn(0.0, 1.0)
             if (input.vibratoKind == VibratoKind.WOBBLE || input.vibratoKind == VibratoKind.TREMOLO) s * params.wobbleSteadyFactor else s
         } else {
@@ -133,7 +132,7 @@ class Scorer(
         val pitch = pitchSmooth.process(pitchRaw)
         val steady = steadySmooth.process(steadyRaw)
         val weightSum = params.ringWeight + params.pitchWeight + params.steadyWeight
-        val score = if (pushed || weightSum <= 0.0) 0.0 else (params.ringWeight * ring + params.pitchWeight * pitch + params.steadyWeight * steady) / weightSum
+        val score = if (weightSum <= 0.0) 0.0 else (params.ringWeight * ring + params.pitchWeight * pitch + params.steadyWeight * steady) / weightSum
 
         streak = if (score >= params.streakScore) streak + hopSeconds else 0.0
         val streakOut = if (streak >= params.streakSeconds) streak else 0.0

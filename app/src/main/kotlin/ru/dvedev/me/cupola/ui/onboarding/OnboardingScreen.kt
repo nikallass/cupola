@@ -49,10 +49,10 @@ private const val STEPS = 4
 
 /**
  * First-run flow (SPEC §15.5, T-059): «всё относительно» → microphone → voice type →
- * calibration (or later). Marks `onboardingDone` when finished.
+ * room noise (or later). Marks `onboardingDone` when finished.
  */
 @Composable
-fun OnboardingScreen(graph: AppGraph, onCalibrate: () -> Unit, onFinished: () -> Unit) {
+fun OnboardingScreen(graph: AppGraph, onRoomNoise: () -> Unit, onFinished: () -> Unit) {
     val c = CupolaTheme.colors
     val t = CupolaTheme.type
     val context = LocalContext.current
@@ -118,9 +118,9 @@ fun OnboardingScreen(graph: AppGraph, onCalibrate: () -> Unit, onFinished: () ->
                 else -> {
                     Text(stringResource(R.string.ob_4_title), style = t.title, color = c.ink)
                     Text(stringResource(R.string.ob_4_body), style = t.body, color = c.mut)
-                    Text(stringResource(R.string.cal_intro_body), style = t.body, color = c.dim)
+                    Text(stringResource(R.string.noise_intro_body), style = t.body, color = c.dim)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        PillButton(stringResource(R.string.ob_calibrate_now), onClick = { finish(onCalibrate) }, style = PillStyle.Primary)
+                        PillButton(stringResource(R.string.ob_measure_now), onClick = { finish(onRoomNoise) }, style = PillStyle.Primary)
                         PillButton(stringResource(R.string.ob_later), onClick = { finish(onFinished) }, style = PillStyle.Outline)
                     }
                 }

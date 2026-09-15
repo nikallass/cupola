@@ -58,6 +58,10 @@ class AudioEngine(
     @Volatile var analyzer: Analyzer = Analyzer(config)
         private set
 
+    /** Debug hook handed to every [Analyzer] this engine creates (see Analyzer.pitchTrace). */
+    @Volatile var pitchTrace: ((raw: ru.dvedev.me.cupola.dsp.pitch.PitchEstimate, out: ru.dvedev.me.cupola.dsp.pitch.PitchEstimate) -> Unit)? = null
+        set(value) { field = value; analyzer.pitchTrace = value }
+
     @Volatile private var baseConfig: AnalyzerConfig = config
 
     @Volatile var overruns: Long = 0
@@ -75,15 +79,13 @@ class AudioEngine(
     fun addListener(l: FrameListener) { listeners += l }
     fun removeListener(l: FrameListener) { listeners -= l }
 
-    /** Applies analyzer settings that survive restarts (band, calibration, A4 …). */
+    /** Applies analyzer settings that survive restarts (band, A4 …). */
     fun updateConfig(transform: (AnalyzerConfig) -> AnalyzerConfig) {
         val c = transform(baseConfig)
         baseConfig = c
         analyzer.band = c.band
-        analyzer.calibration = c.calibration
         analyzer.a4Hz = c.a4Hz
         analyzer.confidenceMin = c.confidenceMin
-        analyzer.splNormalisationK = c.splNormalisationK
         analyzer.includeFundamentalInOvertones = c.includeFundamentalInOvertones
     }
 
@@ -99,7 +101,7 @@ class AudioEngine(
             _state.value = EngineState.Error(e.message ?: "audio open failed")
             return false
         }
-        analyzer = Analyzer(baseConfig.copy(sampleRate = status.sampleRate))
+        analyzer = Analyzer(baseConfig.copy(sampleRate = status.sampleRate)).also { it.pitchTrace = pitchTrace }
         val hop = analyzer.hop
         val ring = FloatRingBuffer(status.sampleRate) // 1 s of headroom
         overruns = 0

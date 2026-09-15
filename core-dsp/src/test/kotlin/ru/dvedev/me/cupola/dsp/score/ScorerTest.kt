@@ -1,19 +1,15 @@
 package ru.dvedev.me.cupola.dsp.score
 
-import ru.dvedev.me.cupola.dsp.calibration.Calibration
 import ru.dvedev.me.cupola.dsp.metrics.VibratoKind
-import ru.dvedev.me.cupola.dsp.metrics.VoiceType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ScorerTest {
     private val hop = 0.01
-    private val base = Calibration(VoiceType.UNSET.band, noiseFloorDbfs = -60.0, ringRatioDb = -10.0, splDbfs = -20.0, voicedShare = 1.0, createdAtEpochMs = 0)
-
-    private fun good(ringNorm: Double = -4.0) = ScoreInput(
+    private fun good(share: Double = 25.0, hump: Double = 8.0) = ScoreInput(
         voice = true, confidence = 0.9, cents = 2.0, pitchSd = 0.0, vibratoKind = VibratoKind.STRAIGHT,
-        ringRatioNorm = ringNorm, splDbfs = -20.0,
+        ringSharePct = share, humpDb = hump,
     )
 
     /** Runs the same input for [seconds] so the smoothers settle; returns the last output. */
@@ -25,7 +21,7 @@ class ScorerTest {
 
     @Test
     fun `open gate with full ring, pitch and steadiness scores 1`() {
-        val out = settle(Scorer(hop, base), good(ringNorm = -4.0), seconds = 3.5)
+        val out = settle(Scorer(hop), good(), seconds = 3.5)
         assertEquals(Gate.OPEN, out.gate)
         assertEquals(1.0, out.ringRaw, 1e-9)
         assertEquals(1.0, out.score, 0.02)
@@ -34,48 +30,52 @@ class ScorerTest {
 
     @Test
     fun `each gate branch`() {
-        val s = Scorer(hop, base)
+        val s = Scorer(hop)
         assertEquals(Gate.NO_VOICE, s.frame(good().copy(voice = false)).gate)
         assertEquals(Gate.LOW_CONFIDENCE, s.frame(good().copy(confidence = 0.5)).gate)
         assertEquals(Gate.SOVT, s.frame(good().copy(sovt = true)).gate)
-        assertEquals(Gate.PUSHED, s.frame(good().copy(splDbfs = -20.0 + 13.0)).gate)
-        assertEquals(Gate.UNSTABLE_PITCH, s.frame(good().copy(pitchSd = 25.0)).gate)
-        assertEquals(Gate.UNSTABLE_PITCH, s.frame(good().copy(pitchSd = Double.NaN)).gate)
+        // an unstable pitch no longer blocks the ring (2026‑09‑15): it only lowers `steady`
+        assertEquals(Gate.OPEN, s.frame(good().copy(pitchSd = 25.0)).gate)
         assertEquals(Gate.OPEN, s.frame(good()).gate)
-        assertEquals(Gate.NOT_CALIBRATED, Scorer(hop, null).frame(good()).gate)
     }
 
     @Test
     fun `gated frames give ring 0`() {
-        for (input in listOf(good().copy(pitchSd = 30.0), good().copy(confidence = 0.2), good().copy(voice = false))) {
-            assertEquals(0.0, Scorer(hop, base).frame(input).ringRaw)
+        for (input in listOf(good().copy(confidence = 0.2), good().copy(voice = false), good().copy(sovt = true))) {
+            assertEquals(0.0, Scorer(hop).frame(input).ringRaw)
         }
     }
 
     @Test
-    fun `score is monotonic in ring`() {
+    fun `ring needs both a share and a hump and is monotonic in each`() {
+        val s = Scorer(hop)
+        assertEquals(0.0, s.ringRaw(30.0, -6.0)) // energy in the band but no hump: nothing
+        assertEquals(0.0, s.ringRaw(2.0, 10.0)) // a hump but a negligible share: nothing
+        assertEquals(1.0, s.ringRaw(12.0, 6.0), 1e-9)
+        assertEquals(0.5, s.ringRaw(7.0, 0.0), 1e-9) // half share credit × half hump credit → √0.25
         var prev = -1.0
-        for (ringNorm in listOf(-12.0, -10.0, -8.0, -7.0, -6.0, -5.0, -4.0, 0.0)) {
-            val out = settle(Scorer(hop, base), good(ringNorm))
-            assertTrue(out.score >= prev - 1e-9, "ringNorm $ringNorm: ${out.score} < $prev")
-            prev = out.score
+        for (share in listOf(0.0, 5.0, 10.0, 15.0, 20.0, 40.0)) {
+            val r = s.ringRaw(share, 6.0)
+            assertTrue(r >= prev, "share $share: $r < $prev")
+            prev = r
         }
-        assertEquals(0.5, settle(Scorer(hop, base), good(-7.0)).ringRaw, 1e-9)
-    }
-
-    @Test
-    fun `pushed by 13 dB zeroes the score`() {
-        val s = Scorer(hop, base)
-        settle(s, good())
-        val out = settle(s, good().copy(splDbfs = -7.0), seconds = 1.0)
-        assertEquals(Gate.PUSHED, out.gate)
-        assertEquals(0.0, out.score)
-        assertEquals(0.0, out.streakSeconds)
+        prev = -1.0
+        for (hump in listOf(-10.0, -3.0, 0.0, 3.0, 6.0, 12.0)) {
+            val r = s.ringRaw(12.0, hump)
+            assertTrue(r >= prev, "hump $hump: $r < $prev")
+            prev = r
+        }
+        var prevScore = -1.0
+        for (hump in listOf(-6.0, -3.0, 0.0, 3.0, 6.0)) {
+            val out = settle(Scorer(hop), good(hump = hump))
+            assertTrue(out.score >= prevScore - 1e-9)
+            prevScore = out.score
+        }
     }
 
     @Test
     fun `pitch and steady ramps`() {
-        val s = Scorer(hop, base)
+        val s = Scorer(hop)
         assertEquals(1.0, s.frame(good().copy(cents = -5.0)).pitchRaw, 1e-9)
         assertEquals(0.6, s.frame(good().copy(cents = 15.0)).pitchRaw, 1e-9)
         assertEquals(0.0, s.frame(good().copy(cents = 31.0)).pitchRaw, 1e-9)
@@ -96,7 +96,7 @@ class ScorerTest {
 
     @Test
     fun `streak needs 3 seconds above 0_7`() {
-        val s = Scorer(hop, base)
+        val s = Scorer(hop)
         // the 80 ms attack keeps score < 0.7 for the first ~11 frames, so the streak starts late
         var out = settle(s, good(), seconds = 2.9)
         assertEquals(0.0, out.streakSeconds)

@@ -97,6 +97,8 @@ fun PillButton(
     style: PillStyle = PillStyle.Primary,
     active: Boolean = false,
     leading: @Composable (() -> Unit)? = null,
+    /** Tighter horizontal padding for narrow top bars (phones). */
+    compact: Boolean = false,
 ) {
     val c = CupolaTheme.colors
     val (bg, fg, border) = when (style) {
@@ -104,7 +106,7 @@ fun PillButton(
         PillStyle.Muted -> Triple(c.panel, c.mut, c.line)
         PillStyle.Outline -> Triple(Color.Transparent, if (active) c.violetInk else c.mut, if (active) c.violet else c.line2)
     }
-    val padH = if (style == PillStyle.Outline) CupolaDimens.pausePaddingH else CupolaDimens.buttonPaddingH
+    val padH = if (compact) CupolaDimens.compactButtonPaddingH else if (style == PillStyle.Outline) CupolaDimens.pausePaddingH else CupolaDimens.buttonPaddingH
     Row(
         modifier
             .clip(CircleShape)

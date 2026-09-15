@@ -40,7 +40,7 @@ import ru.dvedev.me.cupola.ui.theme.CupolaTheme
  * right (T-058).
  */
 @Composable
-fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: () -> Unit) {
+fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: () -> Unit) {
     val liveMetrics by vm.uiMetrics.collectAsStateWithLifecycle()
     val metrics = if (vm.paused) vm.frozenMetrics else liveMetrics
     val liveNote by vm.displayNote.collectAsStateWithLifecycle()
@@ -51,15 +51,12 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: (
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { vm.startSession() }
     val startSession: () -> Unit = {
         val needsAsk = Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
-            vm.calibration.value != null
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         if (needsAsk) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS) else vm.startSession()
     }
     val settings by vm.settings.collectAsStateWithLifecycle()
-    val calibration by vm.calibration.collectAsStateWithLifecycle()
     val c = CupolaTheme.colors
     val band = settings.band
-    val baseline = calibration?.ringRatioDb
     val harmonics = metrics?.harmonics ?: emptyList()
     val notation = settings.notation
     val accidentals = settings.accidentals
@@ -67,6 +64,10 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: (
 
     BoxWithConstraints(Modifier.fillMaxSize().background(c.panel).systemBarsPadding()) {
         val landscape = maxWidth > maxHeight && maxWidth >= 600.dp
+        // a phone held sideways: the note and the arc side by side in a narrower column, the
+        // spectrogram takes the rest, the spectrum only if there is room
+        val shortLandscape = landscape && maxHeight < 480.dp
+        val roomForSpectrum = maxHeight >= 400.dp
         val narrow = maxWidth < 420.dp
         Column(Modifier.fillMaxSize()) {
             TopBar(
@@ -82,32 +83,35 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: (
             if (landscape) {
                 Row(Modifier.fillMaxSize()) {
                     NoteZone(
-                        metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote, baselineDb = baseline,
+                        metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote,
                         notation = notation, accidentals = accidentals, hintsEnabled = settings.hints, pointsAnimation = settings.pointsAnimation,
-                        onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onCalibrate,
-                        modifier = Modifier.width(CupolaDimens.landscapeNoteWidth).fillMaxHeight(),
-                        compact = true,
+                        onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onRoomNoise,
+                        modifier = Modifier.width(if (shortLandscape) CupolaDimens.shortLandscapeNoteWidth else CupolaDimens.landscapeNoteWidth).fillMaxHeight(),
+                        compact = !shortLandscape,
                     )
                     Box(Modifier.width(CupolaDimens.divider).fillMaxHeight().background(c.line))
                     Column(Modifier.fillMaxSize()) {
                         SpectrogramZone(
                             history = vm.spectrogram, band = band, targetNote = vm.targetNote, harmonics = harmonics,
                             paused = vm.paused, viewEnd = vm.viewEnd, onScroll = vm::scrollBy,
-                            modifier = Modifier.fillMaxWidth().weight(0.6f),
+                            modifier = Modifier.fillMaxWidth().weight(if (shortLandscape) 1f else 0.6f),
                         )
-                        ZoneDivider()
-                        SpectrumZone(
-                            snapshot = vm.spectrum, band = band, ringNormDb = metrics?.ringRatioNorm, baselineDb = baseline,
-                            paused = vm.paused, topDb = { vm.spectrogram.topDb }, logScale = settings.logFrequencyAxis,
-                            modifier = Modifier.fillMaxWidth().weight(0.4f),
-                        )
+                        if (!shortLandscape || roomForSpectrum) {
+                            ZoneDivider()
+                            SpectrumZone(
+                                snapshot = vm.spectrum, band = band, sharePct = displayNote.ringSharePct, humpDb = displayNote.humpDb,
+                                paused = vm.paused, topDb = { vm.spectrogram.topDb }, logScale = settings.logFrequencyAxis,
+                                showLegend = !shortLandscape,
+                                modifier = if (shortLandscape) Modifier.fillMaxWidth().height(130.dp) else Modifier.fillMaxWidth().weight(0.4f),
+                            )
+                        }
                     }
                 }
             } else {
                 NoteZone(
-                    metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote, baselineDb = baseline,
+                    metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote,
                     notation = notation, accidentals = accidentals, hintsEnabled = settings.hints, pointsAnimation = settings.pointsAnimation,
-                    onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onCalibrate,
+                    onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onRoomNoise,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 ZoneDivider()
@@ -118,23 +122,15 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: (
                 )
                 ZoneDivider()
                 SpectrumZone(
-                    snapshot = vm.spectrum, band = band, ringNormDb = metrics?.ringRatioNorm, baselineDb = baseline,
+                    snapshot = vm.spectrum, band = band, sharePct = displayNote.ringSharePct, humpDb = displayNote.humpDb,
                     paused = vm.paused, topDb = { vm.spectrogram.topDb }, logScale = settings.logFrequencyAxis,
-                    modifier = Modifier.fillMaxWidth().height(CupolaDimens.spectrumHeight),
+                    showLegend = !narrow,
+                    modifier = Modifier.fillMaxWidth().height(if (narrow) 220.dp else CupolaDimens.spectrumHeight),
                 )
             }
         }
     }
 
-    if (vm.calibrationPrompt) {
-        AlertDialog(
-            onDismissRequest = { vm.dismissCalibrationPrompt() },
-            title = { Text(stringResource(R.string.need_calibration_title)) },
-            text = { Text(stringResource(R.string.need_calibration_body), style = CupolaTheme.type.body) },
-            confirmButton = { TextButton(onClick = { vm.dismissCalibrationPrompt(); onCalibrate() }) { Text(stringResource(R.string.settings_calibrate)) } },
-            dismissButton = { TextButton(onClick = { vm.dismissCalibrationPrompt() }) { Text(stringResource(R.string.action_cancel)) } },
-        )
-    }
     session.summary?.let { summary -> SummaryDialog(summary, onDismiss = { vm.dismissSummary() }) }
 }
 

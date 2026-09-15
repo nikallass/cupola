@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -46,20 +47,36 @@ fun SettingsSection(title: String) {
 fun SettingRow(title: String, help: String?, trailing: @Composable () -> Unit) {
     val c = CupolaTheme.colors
     var showHelp by remember { mutableStateOf(false) }
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = CupolaDimens.paddingH, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(title, style = CupolaTheme.type.body, color = c.ink)
-        if (help != null) {
-            Spacer(Modifier.width(6.dp))
-            Box(
-                Modifier.size(18.dp).clip(CircleShape).border(1.dp, c.line2, CircleShape).clickable { showHelp = true },
-                contentAlignment = Alignment.Center,
-            ) { Text("?", style = CupolaTheme.type.axis, color = c.dim) }
+    val titleRow: @Composable () -> Unit = {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = CupolaTheme.type.body, color = c.ink)
+            if (help != null) {
+                Spacer(Modifier.width(6.dp))
+                Box(
+                    Modifier.size(18.dp).clip(CircleShape).border(1.dp, c.line2, CircleShape).clickable { showHelp = true },
+                    contentAlignment = Alignment.Center,
+                ) { Text("?", style = CupolaTheme.type.axis, color = c.dim) }
+            }
         }
-        Spacer(Modifier.weight(1f))
-        trailing()
+    }
+    // phones (< 420 dp): the control goes under the title, right-aligned, so −/+ and long
+    // values are never squeezed off the screen
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (maxWidth < 420.dp) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = CupolaDimens.paddingH, vertical = 8.dp)) {
+                titleRow()
+                Box(Modifier.fillMaxWidth().padding(top = 6.dp), contentAlignment = Alignment.CenterEnd) { trailing() }
+            }
+        } else {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = CupolaDimens.paddingH, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                titleRow()
+                Spacer(Modifier.weight(1f))
+                trailing()
+            }
+        }
     }
     if (showHelp && help != null) {
         AlertDialog(

@@ -1,6 +1,5 @@
 package ru.dvedev.me.cupola.dsp
 
-import ru.dvedev.me.cupola.dsp.calibration.Calibration
 import ru.dvedev.me.cupola.dsp.fft.PowerSpectrum
 import ru.dvedev.me.cupola.dsp.frame.Framer
 import ru.dvedev.me.cupola.dsp.metrics.HarmonicTracker
@@ -28,10 +27,8 @@ data class AnalyzerConfig(
     val fftSize: Int = AudioFormatDefaults.FFT_SIZE,
     val hop: Int = AudioFormatDefaults.HOP_SIZE,
     val band: RingBand = VoiceType.UNSET.band,
-    val calibration: Calibration? = null,
     val a4Hz: Double = Tuning.DEFAULT_A4_HZ,
     val confidenceMin: Double = 0.7,
-    val splNormalisationK: Double = RingMetrics.DEFAULT_K,
     val includeFundamentalInOvertones: Boolean = false,
     val scoreParams: ScoreParams = ScoreParams(),
 )
@@ -48,11 +45,10 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
     val hopSeconds: Double = hop.toDouble() / sampleRate
 
     @Volatile var band: RingBand = config.band
-    @Volatile var calibration: Calibration? = config.calibration
-        set(value) { field = value; scorer.calibration = value }
     @Volatile var a4Hz: Double = config.a4Hz
     @Volatile var confidenceMin: Double = config.confidenceMin
-    @Volatile var splNormalisationK: Double = config.splNormalisationK
+    /** A measured room profile to seed the noise floor with; applied on the analysis thread, then cleared. */
+    @Volatile var pendingRoomNoise: DoubleArray? = null
     @Volatile var includeFundamentalInOvertones: Boolean = config.includeFundamentalInOvertones
 
     val framer = Framer(fftSize, hop, sampleRate)
@@ -67,7 +63,7 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
     val harmonics = HarmonicTracker(maxHz = minOf(8000.0, spectrum.nyquistHz))
     val pitchStats = PitchStats(hopSeconds)
     val vibrato = VibratoAnalyzer(hopSeconds)
-    val scorer = Scorer(hopSeconds, config.calibration, config.scoreParams)
+    val scorer = Scorer(hopSeconds, config.scoreParams)
     private val overtoneMedian = RollingMedian((0.3 / hopSeconds).toInt().coerceAtLeast(1))
     private val noteScratch = Note(69)
 
@@ -83,6 +79,7 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
     private fun analyse(raw: DoubleArray, windowed: DoubleArray, timeSec: Double): FrameMetrics {
         spectrum.compute(windowed)
         val spl = RingMetrics.splDbfs(raw)
+        pendingRoomNoise?.let { noise.seed(it); pendingRoomNoise = null }
         val voice = noise.update(spectrum.db, spl)
         val raw0 = if (voice) pitchDetector.estimate(raw, sampleRate) else ru.dvedev.me.cupola.dsp.pitch.PitchEstimate.NONE
         // spectral tracking (PitchTracker): harmonic-comb candidates + YIN octaves, continuity
@@ -96,9 +93,7 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
         val cents = nearest?.cents ?: Double.NaN
         val note = nearest?.note ?: noteScratch
 
-        val ringMeasure = RingMetrics.measure(spectrum, band, spl)
-        val base = calibration
-        val ringNorm = if (base != null) RingMetrics.normalise(ringMeasure.ringRatioDb, spl, base.splDbfs, splNormalisationK) else Double.NaN
+        val ringMeasure = RingMetrics.measure(spectrum, band, spl, if (noise.initialized) noise else null)
 
         val hset = harmonics.track(f0, spectrum, noise)
         overtoneMedian.push(if (trusted) hset.overtoneCount(includeFundamentalInOvertones).toDouble() else Double.NaN)
@@ -114,8 +109,8 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
                 cents = cents,
                 pitchSd = pitchStats.pitchSd,
                 vibratoKind = vib.kind,
-                ringRatioNorm = ringNorm,
-                splDbfs = spl,
+                ringSharePct = ringMeasure.ringSharePct,
+                humpDb = ringMeasure.humpDb,
             ),
         )
         return FrameMetrics(
@@ -128,9 +123,9 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
             splDbfs = spl,
             noiseFloorDbfs = noise.rmsFloorDb,
             ringRatioDb = ringMeasure.ringRatioDb,
-            ringRatioNorm = ringNorm,
             ringSharePct = ringMeasure.ringSharePct,
             peakSprDb = ringMeasure.peakSprDb,
+            humpDb = ringMeasure.humpDb,
             overtoneCount = overtoneCount,
             harmonics = if (trusted) hset.snapshot() else emptyList(),
             pitchSd = pitchStats.pitchSd,
@@ -142,7 +137,6 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
             steady = score.steady,
             score = score.score,
             streakSeconds = score.streakSeconds,
-            calibrated = base != null,
         )
     }
 

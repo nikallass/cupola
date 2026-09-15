@@ -13,11 +13,10 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * Score → vibration during a session (SPEC §6.2, §15.5, T-057).
- *
- * With amplitude control: 100 ms segments whose amplitude is `30 + 225·score`, each
- * starting and ending at 0 for LRA motors. Without it (KENSHI E11): 40 ms pulses every
- * `600 − 500·score` ms. Nothing below score 0.2.
+ * Cupola → vibration during a session (owner decision 2026‑09‑15: the phone vibrates while
+ * the two halves of the cupola arc have met, i.e. `ring ≥ MET`). With amplitude control:
+ * a continuous soft waveform whose amplitude follows the ring; without it (KENSHI E11):
+ * 40 ms pulses every 150 ms.
  */
 class HapticsController(context: Context, private val scope: CoroutineScope) {
     private val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -32,22 +31,22 @@ class HapticsController(context: Context, private val scope: CoroutineScope) {
 
     private var job: Job? = null
 
-    /** [score] is polled every tick; [enabled] gates the whole loop. */
-    fun start(score: () -> Double, enabled: () -> Boolean) {
+    /** [ring] is polled every tick; [enabled] gates the whole loop. */
+    fun start(ring: () -> Double, enabled: () -> Boolean) {
         if (!available) return
         job?.cancel()
         job = scope.launch {
             while (isActive) {
                 if (!enabled()) { delay(200); continue }
-                val s = score().coerceIn(0.0, 1.0)
-                if (s < MIN_SCORE) { delay(100); continue }
+                val r = ring().coerceIn(0.0, 1.0)
+                if (r < MET) { delay(60); continue }
                 if (hasAmplitudeControl) {
-                    val amp = (30 + 225 * s).roundToInt().coerceIn(1, 255)
-                    vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(20, 60, 20), intArrayOf(amp / 3, amp, amp / 3), -1))
-                    delay(100)
+                    val amp = (120 + 135 * r).roundToInt().coerceIn(1, 255)
+                    vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(30, 90, 30), intArrayOf(amp / 2, amp, amp / 2), -1))
+                    delay(150)
                 } else {
                     vibrator?.vibrate(VibrationEffect.createOneShot(PULSE_MS, VibrationEffect.DEFAULT_AMPLITUDE))
-                    delay((600 - 500 * s).toLong().coerceAtLeast(PULSE_MS + 20))
+                    delay(PULSE_MS + 110)
                 }
             }
         }
@@ -60,7 +59,8 @@ class HapticsController(context: Context, private val scope: CoroutineScope) {
     }
 
     companion object {
-        const val MIN_SCORE = 0.2
+        /** The cupola halves meet here; the arc sparkles and points flow (see NoteZone). */
+        const val MET = 0.9
         const val PULSE_MS = 40L
     }
 }

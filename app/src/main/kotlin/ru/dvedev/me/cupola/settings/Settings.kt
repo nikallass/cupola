@@ -2,7 +2,6 @@ package ru.dvedev.me.cupola.settings
 
 import ru.dvedev.me.cupola.audio.AudioSourcePreference
 import ru.dvedev.me.cupola.dsp.metrics.RingBand
-import ru.dvedev.me.cupola.dsp.metrics.RingMetrics
 import ru.dvedev.me.cupola.dsp.metrics.VoiceType
 import ru.dvedev.me.cupola.dsp.score.ScoreParams
 import ru.dvedev.me.cupola.dsp.score.ScoreWeights
@@ -36,7 +35,10 @@ data class Settings(
     val centsOk: Int = 10,
     val centsWarn: Int = 25,
     val confidenceMin: Double = 0.7,
-    val splK: Double = RingMetrics.DEFAULT_K,
+    /** Share of the voice energy in the band that earns the full cupola, %. */
+    val ringShareFullPct: Int = 12,
+    /** Hump over the flanks that earns the full cupola, dB. */
+    val ringHumpFullDb: Int = 6,
     val ringWeight: Double = ScoreWeights.RING,
     val pitchWeight: Double = ScoreWeights.PITCH,
     val steadyWeight: Double = ScoreWeights.STEADY,
@@ -45,15 +47,15 @@ data class Settings(
     val band: RingBand
         get() = if (useCustomBand) RingBand(customLoHz.toDouble(), customHiHz.toDouble()) else voiceType.band
 
-    /** Calibrations are stored per voice type or per custom band (SPEC §15.5). */
-    val calibrationKey: String
-        get() = if (useCustomBand) "band:$customLoHz-$customHiHz" else "voice:${voiceType.name}"
-
     fun scoreParams(): ScoreParams = ScoreParams(
         ringWeight = ringWeight,
         pitchWeight = pitchWeight,
         steadyWeight = steadyWeight,
         confidenceMin = confidenceMin,
+        shareFullPct = ringShareFullPct.toDouble(),
+        shareZeroPct = ringShareFullPct / 6.0,
+        humpFullDb = ringHumpFullDb.toDouble(),
+        humpZeroDb = -ringHumpFullDb.toDouble(),
     )
 
     companion object {
