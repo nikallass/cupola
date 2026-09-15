@@ -88,30 +88,34 @@
 - **Тесты:** 5.5 Гц ±70 ¢ → rate 5.5 ± 0.3, extent 70 ± 10; прямой тон; качание 3 Гц ±150 ¢.
 - Итог 2026‑09‑15: `metrics/VibratoAnalyzer` (окно 2 с, Hann + FFT 1024 по остатку, пик 1.5–15 Гц с параболическим уточнением, extent — амплитуда пика; пересчёт каждые 5 кадров), `VibratoKind` NONE/STRAIGHT/VIBRATO/WOBBLE/TREMOLO; зазоры 4–4.5 и 7–7.5 Гц отнесены к VIBRATO.
 
-### T-027 · Гейты, показатели, score `todo` · после T-024, T-025, T-026
+### T-027 · Гейты, показатели, score `done` · после T-024, T-025, T-026
 - Показатели `ring`, `pitch`, `steady` (0…1) по §6.2.1 с поправкой §15.5 (качание/тремоло снижают `steady`); `score = 0.6·ring + 0.25·pitch + 0.15·steady`; таблица весов — одно место с пометкой «до CPPS».
 - Гейты: голос, `confidence ≥ 0.7`, `pitchSD ≤ 20`, `SPL ≤ baseline + 12`; при срабатывании — код гейта для подсказок.
 - Сглаживание `attackRelease(80 мс, 400 мс)`; серия ≥ 3 с при `score ≥ 0.7`.
 - **Тесты:** каждая ветка гейта; монотонность score по ring; `pushed` при SPL + 13 dB → score 0.
+- Итог 2026‑09‑15: `score/ScoreWeights` (0.6/0.25/0.15, единственное место), `Gate` (OPEN, NO_VOICE, LOW_CONFIDENCE, PUSHED, UNSTABLE_PITCH, SOVT, NOT_CALIBRATED — порядок = приоритет подсказок), `ScoreParams`, `Scorer` (`ScoreInput` → `ScoreOutput`), `AttackRelease`. Серия считается по сглаженному score, поэтому одиночный невокализованный кадр её не рвёт (release 400 мс мостит согласные), 0.5 с тишины — рвёт. Качание/тремоло × 0.6 на `steady`.
 
-### T-028 · Калибровка (baseline) `todo` · после T-024
+### T-028 · Калибровка (baseline) `done` · после T-024
 - Процедура: тишина 2 с → noise floor; /а/ 4 с → `RingRatio_baseline`, `SPL_baseline`; валидация: шум > −45 dBFS → предупреждение; доля кадров с `confidence < 0.7` > 50 % → «повторить».
 - Модель `Calibration(voiceBand, noiseFloorDb, ringRatioDb, splDbfs, createdAt)`; хранение — в `:app` (DataStore/JSON), ключ — тип голоса/диапазон.
 - **Тесты:** синтетическая калибровка даёт ожидаемые baseline; валидация срабатывает.
+- Итог 2026‑09‑15: `calibration/Calibration` (band, noiseFloorDbfs, ringRatioDb, splDbfs, voicedShare, createdAtEpochMs), `CalibrationSession` (фазы SILENCE 2 с → VOWEL 4 с → DONE, `progress`/`secondsLeft`, медианы; `NOISY_ROOM` при шуме > −45 dBFS, `UNSTABLE_VOICE` при доле вокализованных < 50 % → `mustRepeat`). Хранение — в `:app` (T-060/T-061).
 
-### T-029 · Кадры сессии и агрегаты `todo` · после T-027
+### T-029 · Кадры сессии и агрегаты `done` · после T-027
 - `FrameMetrics` (публикуется 100 Гц) и `SessionFrame` (децимация 10 Гц: t, f0, cents, ringNorm, spl, score, gate).
 - `SessionSummary`: средний/лучший score, доля времени ≥ 0.7, очки, лучшая серия, средние по ring/pitch/steady. Модель `SessionRecording` (кадры + ссылка на WAV) — только тип, без записи на диск.
 - Начисление очков: интервал `0.6 − 0.48·ring` с при `score ≥ 0.5`, порция `1 + round(2·ring)`.
 - **Тесты:** сводка по известной последовательности кадров; счётчик очков по таймлайну.
+- Итог 2026‑09‑15: `FrameMetrics` (в корне `dsp`), `session/SessionFrame`, `SessionSummary` (средние — по вокализованным кадрам), `SessionRecording`, `SessionAccumulator` (децимация 10), `PointsCounter` (первая порция через интервал после входа в score ≥ 0.5).
 
 ### T-030 · `:core-testdata` `done` · после T-002
 - Генераторы: синус, пила, гармонический голос (тилт, форманты, полоса купола с усилением), вибрато, глиссандо, белый/розовый шум, огибающая атаки; запись WAV для ручной проверки.
 - **Готово, когда:** все тесты E2 используют только эти генераторы.
 - Итог 2026‑09‑15: `Signals` (sine, sawtooth, harmonicVoice с тилтом/формантами, white/pink noise, mix/concat/gain/envelope, rms), `PitchContour` (Constant/Vibrato/Glissando/Custom), `Formant`, `VoiceSpec`, `Wav.write`.
 
-### T-031 · Прогон §10 и бенчмарк `todo` · после T-021…T-029
+### T-031 · Прогон §10 и бенчмарк `done` · после T-021…T-029
 - Единый набор тестов §10 + микробенчмарк полного конвейера (кадр → метрики) на JVM; цель < 2 мс/кадр.
+- Итог 2026‑09‑15: `Analyzer` + `AnalyzerConfig` — весь конвейер §4 (кадр → спектр → YIN → гармоники → метрики → score → `FrameMetrics`, живой `PowerSpectrum` отдаётся в колбэке для спектрограммы); `Spec10SuiteTest` сквозь `Analyzer`. Бенчмарк на сервере: 1.59 мс/кадр (из них YIN ≈ 1.5). Всего в `:core-dsp` 66 тестов.
 
 ---
 

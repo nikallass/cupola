@@ -7,6 +7,7 @@ kotlin {
 }
 
 dependencies {
+    api(project(":core-notation"))
     implementation(libs.kotlinx.coroutines.core)
 
     testImplementation(project(":core-testdata"))
