@@ -121,15 +121,17 @@
 
 ## E3 · `:core-audio`
 
-### T-040 · Захват `AudioRecord` `todo` · после T-002
+### T-040 · Захват `AudioRecord` `done` · после T-002
 - Источник: `UNPROCESSED` (проверка `PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED`) → fallback `VOICE_RECOGNITION`; ручной выбор; отчёт `AudioSourceStatus` (какой источник, «обработка отключена / не гарантирована»). Никогда `MIC`/`DEFAULT`, без `NoiseSuppressor`/`AGC`.
 - 48 кГц (fallback 44.1), mono, float или 16-bit; буфер `getMinBufferSize() × 4`.
 - **Готово, когда:** на E11 в логе видно выбранный источник и sample rate; спектр синуса с мониторов без «дыр» в 2–4 кГц.
+- Итог 2026‑09‑15: `audio/AudioCapture` (`AudioRecord.Builder`, float mono, 48k→44.1k, буфер ×4; AUTO = UNPROCESSED только если задекларирован, иначе VOICE_RECOGNITION — т.к. незадекларированный UNPROCESSED ведёт себя как DEFAULT), `AudioSourcePreference`, `AudioSourceStatus` + `ProcessingState` (DISABLED / NOT_GUARANTEED / UNVERIFIED). E11: `PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED = false` → VOICE_RECOGNITION @ 48000, буфер 80 мс. Проверка спектра на «дыры» — T-070.
 
-### T-041 · Поток чтения и доставка кадров `todo` · после T-040, T-020
+### T-041 · Поток чтения и доставка кадров `doing` · после T-040, T-020
 - Отдельный поток `THREAD_PRIORITY_URGENT_AUDIO`, чтение в ring buffer из T-020, без аллокаций; счётчик переполнений/дропов.
 - Публикация `StateFlow<FrameMetrics>` (100 Гц) из `AnalysisEngine`, объединяющего T-02x.
 - **Готово, когда:** 10 минут без дропов на E11; латентность микрофон → метрика ≤ 60 мс (замер: щелчок → отметка).
+- Итог 2026‑09‑15: `audio/AudioEngine` — поток захвата (`URGENT_AUDIO`) → `FloatRingBuffer` (1 с) → поток анализа (`Analyzer`), `StateFlow<FrameMetrics?>` 100 Гц + `FrameListener` с живым спектром, счётчики `overruns`/`readErrors`, `processingLatencyMs` (E11: ~4 мс от конца чанка до метрики; +80 мс буфер AudioRecord — акустический замер в T-070). 10‑минутный прогон — T-070.
 
 ### T-042 · Foreground-service `todo` · после T-041
 - Сервис с `foregroundServiceType="microphone"`, уведомление «Купол слушает · <нота> · [Стоп]»; запускается только при активной сессии; без сессии сворачивание останавливает захват.
@@ -139,7 +141,7 @@
 
 ## E4 · `:app` — экран «Анализ»
 
-### T-050 · Скелет приложения `todo` · после T-004
+### T-050 · Скелет приложения `doing` · после T-004
 - Навигация: онбординг → анализ → настройки; ручной `AppGraph` (DI); `AnalysisViewModel` на `AnalysisEngine`; разрешение микрофона inline.
 
 ### T-051 · Шапка `todo` · после T-050

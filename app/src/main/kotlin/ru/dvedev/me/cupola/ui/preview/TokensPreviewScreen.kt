@@ -52,13 +52,7 @@ import ru.dvedev.me.cupola.ui.theme.ThemeMode
 fun TokensPreviewScreen(mode: ThemeMode, onModeChange: (ThemeMode) -> Unit) {
     val c = CupolaTheme.colors
     val t = CupolaTheme.type
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(c.panel)
-            .statusBarsPadding()
-            .verticalScroll(rememberScrollState()),
-    ) {
+    Column(Modifier.fillMaxWidth().background(c.panel)) {
         ZoneHeader(
             left = {
                 Label("Купол", color = c.ink)
