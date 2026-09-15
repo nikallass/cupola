@@ -28,6 +28,7 @@
     <string name="cupola">cupola</string>
     <string name="cupola_vs_baseline">cupola %1$s dB vs baseline</string>
     <string name="no_calibration">not calibrated</string>
+    <string name="spectrogram_axis_hint_lin">lin 80 Hz – 8 kHz</string>
     <string name="spectrogram_axis_hint">log 80 Hz – 8 kHz</string>
     <string name="sub_silence">silence</string>
     <string name="unit_khz">kHz</string>

@@ -22,6 +22,8 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // v0.1 is not published: sign release builds with the debug key so they install directly
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

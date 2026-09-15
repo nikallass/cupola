@@ -14,8 +14,12 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.res.stringResource
@@ -35,6 +39,8 @@ import kotlin.math.pow
 private const val F_MIN = 80.0
 private const val F_MAX = 8000.0
 private const val DB_SPAN = 70f
+/** Horizontal resolution of the curve, px per point; every pixel is too much for the E11 GPU. */
+private const val PX_STEP = 2
 
 /**
  * Zone ④ «Спектр» (SPEC §15.3, T-054): log-x spectrum with gold fill, cupola band, dashed
@@ -49,14 +55,18 @@ fun SpectrumZone(
     paused: Boolean,
     /** Running maximum of the spectrogram normalisation; the dB axis follows it. */
     topDb: () -> Float,
+    logScale: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val c = CupolaTheme.colors
-    val measurer = rememberTextMeasurer()
+    val measurer = rememberTextMeasurer(cacheSize = 128) // ~25 distinct labels per frame; the default 8 thrashes
     val axisStyle = CupolaTheme.type.axis
     val tick = remember { mutableLongStateOf(0L) }
+    // redraw at a third of the display rate (20 Hz): the spectrum changes 100×/s anyway and the path
+    // tessellation is the most expensive thing on screen (T-070 measurements)
     LaunchedEffect(paused) {
-        if (!paused) while (true) withFrameNanos { tick.longValue = it }
+        var n = 0
+        if (!paused) while (true) withFrameNanos { if (++n % 3 == 0) tick.longValue = it }
     }
     val curve = remember { Path() }
     val fill = remember { Path() }
@@ -80,7 +90,9 @@ fun SpectrumZone(
                 )
             },
         )
-        Canvas(Modifier.fillMaxSize()) {
+        // Offscreen layer: HWUI keeps the rendered spectrum as a texture and re-executes the
+        // heavy path drawing only when the canvas is invalidated (20 Hz), not on every vsync
+        Canvas(Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
             tick.longValue
             val gutterL = 40.dp.toPx()
             val gutterR = 12.dp.toPx()
@@ -90,10 +102,12 @@ fun SpectrumZone(
             val plotH = size.height - gutterB - gutterT
             if (plotW <= 0 || plotH <= 0) return@Canvas
             val logSpan = ln(F_MAX / F_MIN)
+            val px = plotW.toInt()
             // axis: top at the next 10 dB above the running maximum, 70 dB down
             val top = (kotlin.math.ceil(topDb() / 10f) * 10f + 5f).coerceIn(-45f, 5f)
             val bottom = top - DB_SPAN
-            fun xOf(hz: Double): Float = gutterL + (ln(hz / F_MIN) / logSpan).toFloat() * plotW
+            fun xOf(hz: Double): Float = if (logScale) gutterL + (ln(hz / F_MIN) / logSpan).toFloat() * plotW else gutterL + ((hz - F_MIN) / (F_MAX - F_MIN)).toFloat() * plotW
+            fun hzAt(i: Int): Double = if (logScale) F_MIN * (F_MAX / F_MIN).pow(i.toDouble() / px) else F_MIN + (F_MAX - F_MIN) * i.toDouble() / px
             fun yOf(db: Float): Float = gutterT + (top - db.coerceIn(bottom, top)) / DB_SPAN * plotH
 
             // grid
@@ -107,7 +121,7 @@ fun SpectrumZone(
                 val m = measurer.measure(label, axisStyle)
                 drawLabel(measurer, label, Offset(gutterL - 6.dp.toPx() - m.size.width, y - m.size.height / 2), axisStyle.copy(color = c.dim))
             }
-            for (hz in listOf(100, 200, 400, 800, 1600, 3200, 6400)) {
+            for (hz in if (logScale) listOf(100, 200, 400, 800, 1600, 3200, 6400) else listOf(1000, 2000, 3000, 4000, 5000, 6000, 7000)) {
                 val x = xOf(hz.toDouble())
                 drawLine(c.line, Offset(x, gutterT + plotH), Offset(x, gutterT + plotH + 3.dp.toPx()), strokeWidth = 1f)
                 val label = formatKHz(hz)
@@ -127,11 +141,10 @@ fun SpectrumZone(
             // bins are dense, linear interpolation between bins where pixels are denser
             curve.reset()
             fill.reset()
-            val px = plotW.toInt()
             var prevBin = -1
             var started = false
-            for (i in 0..px) {
-                val hz = F_MIN * (F_MAX / F_MIN).pow(i.toDouble() / px)
+            for (i in 0..px step PX_STEP) {
+                val hz = hzAt(i)
                 val fbin = (hz / binHz).toFloat().coerceIn(0f, (db.size - 1).toFloat())
                 val bin = fbin.toInt()
                 var v = if (bin + 1 < db.size) {
@@ -154,19 +167,19 @@ fun SpectrumZone(
             fill.close()
             clipRect(gutterL, gutterT, gutterL + plotW, gutterT + plotH) {
                 drawPath(fill, c.gold.copy(alpha = 0.22f))
-                drawPath(curve, c.gold, style = Stroke(1.5.dp.toPx()))
-                // noise floor
+                drawPath(curve, c.gold, style = Stroke(1.5.dp.toPx(), join = StrokeJoin.Bevel, cap = StrokeCap.Butt))
+                // noise floor: thin solid line (a dash effect costs more GPU than the whole curve)
                 floor.reset()
                 var fStarted = false
                 var i = 0
                 while (i <= px) {
-                    val hz = F_MIN * (F_MAX / F_MIN).pow(i.toDouble() / px)
+                    val hz = hzAt(i)
                     val bin = (hz / binHz).toInt().coerceIn(0, db.size - 1)
                     val y = yOf(frame.floorDb[bin])
                     if (!fStarted) { floor.moveTo(gutterL + i, y); fStarted = true } else floor.lineTo(gutterL + i, y)
-                    i += 4
+                    i += 6
                 }
-                drawPath(floor, c.dim.copy(alpha = 0.6f), style = Stroke(1f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))))
+                drawPath(floor, c.dim.copy(alpha = 0.45f), style = Stroke(1f))
                 // harmonic envelope + numbers
                 val hs = frame.harmonics.filter { it.audible && it.hz in F_MIN..F_MAX }
                 if (hs.size >= 2) {

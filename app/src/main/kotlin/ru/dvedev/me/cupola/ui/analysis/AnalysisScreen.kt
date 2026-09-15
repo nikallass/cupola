@@ -61,6 +61,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: (
     val harmonics = metrics?.harmonics ?: emptyList()
     val notation = settings.notation
     val accidentals = settings.accidentals
+    vm.spectrogram.logScale = settings.logFrequencyAxis
 
     BoxWithConstraints(Modifier.fillMaxSize().background(c.panel).systemBarsPadding()) {
         val landscape = maxWidth > maxHeight && maxWidth >= 600.dp
@@ -95,7 +96,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: (
                         ZoneDivider()
                         SpectrumZone(
                             snapshot = vm.spectrum, band = band, ringNormDb = metrics?.ringRatioNorm, baselineDb = baseline,
-                            paused = vm.paused, topDb = { vm.spectrogram.topDb },
+                            paused = vm.paused, topDb = { vm.spectrogram.topDb }, logScale = settings.logFrequencyAxis,
                             modifier = Modifier.fillMaxWidth().weight(0.4f),
                         )
                     }
@@ -116,7 +117,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: (
                 ZoneDivider()
                 SpectrumZone(
                     snapshot = vm.spectrum, band = band, ringNormDb = metrics?.ringRatioNorm, baselineDb = baseline,
-                    paused = vm.paused, topDb = { vm.spectrogram.topDb },
+                    paused = vm.paused, topDb = { vm.spectrogram.topDb }, logScale = settings.logFrequencyAxis,
                     modifier = Modifier.fillMaxWidth().height(CupolaDimens.spectrumHeight),
                 )
             }

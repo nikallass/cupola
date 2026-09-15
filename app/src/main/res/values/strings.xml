@@ -31,6 +31,7 @@
     <string name="cupola">купол</string>
     <string name="cupola_vs_baseline">купол %1$s dB к калибровке</string>
     <string name="no_calibration">нет калибровки</string>
+    <string name="spectrogram_axis_hint_lin">лин 80 Гц – 8 кГц</string>
     <string name="spectrogram_axis_hint">лог 80 Гц – 8 кГц</string>
     <string name="sub_silence">тишина</string>
     <string name="unit_khz">кГц</string>

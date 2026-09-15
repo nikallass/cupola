@@ -4,61 +4,72 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Состояние репозитория
 
-Проект **«Купол» (Cupola)**: опенсорсный офлайн Android-визуализатор вокальной тренировки (спектрограмма, нота, обертоны, «звон» = певческая форманта, геймификация с вибрацией).
+Проект **«Купол» (Cupola)**: опенсорсный офлайн Android-визуализатор вокальной тренировки (спектрограмма, нота, обертоны, «звон» = певческая форманта, геймификация с вибрацией). Версия 0.1.0 «Анализ» реализована (эпики E0–E4 в `TICKETS.md`); E5 — стенд и релиз.
 
 - `SPEC.md` — **источник истины**: продуктовая и техническая спецификация, формулы метрик, режимы, модель данных, этапы, тесты. **§15 (решения ревью 2026‑09‑15 и визуал v0.1) имеет приоритет над остальными разделами** там, где они расходятся: там границы версии 0.1, структура экрана «Анализ», палитра, логика сессии/очков, настройки.
-- `TICKETS.md` — план работ v0.1 по эпикам E0–E5 с зависимостями и критериями готовности; статусы вести прямо в нём. Backlog — в конце файла; не тянуть его в v0.1 без запроса.
-- `RESEARCH.md` — исследовательский отчёт (научная база: Sundberg, Omori SPR, CPPS, вибрато, Android-специфика, ссылки на первоисточники). Спека ссылается на него по разделам.
-- `design/mock-analysis-v0.1.html` — согласованный HTML-макет экрана «Анализ» (блоки, цвета, принципы); нативная реализация будет отличаться в деталях, но не в структуре.
+- `TICKETS.md` — план работ v0.1 по эпикам E0–E5 с зависимостями и критериями готовности; статусы и «Итог …» ведутся прямо в нём. Backlog — в конце файла; не тянуть его в v0.1 без запроса.
+- `RESEARCH.md` — исследовательский отчёт (научная база: Sundberg, Omori SPR, CPPS, вибрато, Android-специфика, ссылки на первоисточники).
+- `design/mock-analysis-v0.1.html` — согласованный HTML-макет экрана «Анализ»; нативная реализация отличается в деталях, но не в структуре.
+- `docs/device-notes.md` — что проверено на стенде (KENSHI E11) и что нет. `CHANGELOG.md` — по версиям.
 
 Общение с владельцем и комментарии в документах — на русском; код, комментарии в коде и commit-сообщения — на английском.
 
 ## Стек и цикл сборки
 
-Kotlin + Jetpack Compose, Android 8.0+ (API 26), Gradle KTS, **ручной DI (не Hilt)**, DataStore для настроек (Room не подключается в v0.1), собственная radix-2 FFT, YIN за интерфейсом `PitchDetector`. Пакет `ru.dvedev.me.cupola`.
+Kotlin 2.1 + Jetpack Compose (BOM 2024.12), AGP 8.7, Gradle 8.11, Android 8.0+ (API 26, target 35), Gradle KTS, **ручной DI (не Hilt)**, DataStore Preferences для настроек и калибровок (Room не подключается в v0.1), собственная radix-2 FFT, YIN за интерфейсом `PitchDetector`. Пакет `ru.dvedev.me.cupola`. Версии — в `gradle/libs.versions.toml`.
 
 Эта машина — arm64-VM (AAPT2 из AGP под неё не поставляется), поэтому сборка идёт на сервере, а запуск — на планшете в локальной сети:
 
 ```
-scripts/deploy.sh            # rsync → сервер → gradlew :app:assembleDebug → scp APK → adb install + запуск на E11 (~60 с)
-scripts/deploy.sh --test     # только JVM-тесты :core-dsp/:core-notation на сервере (~6 с)
+scripts/deploy.sh            # rsync → сервер → gradlew :app:assembleDebug → scp APK → adb install + запуск на E11 (~45–60 с)
+scripts/deploy.sh --test     # только JVM-тесты :core-dsp/:core-notation на сервере (~10–50 с)
 scripts/deploy.sh --check    # gradlew check: тесты + checkNoAndroidImports + lint
+scripts/deploy.sh --release  # assembleRelease (подписан debug-ключом) → build/cupola-release.apk
 scripts/deploy.sh --test -- --tests "*.PitchTest"   # один класс тестов
 scripts/deploy.sh --logcat   # после запуска — logcat процесса приложения
+scripts/tap.sh "Старт"       # тап по элементу UI на планшете (uiautomator); scripts/tones.py — тестовые тоны для мониторов
 ```
 
-- Сервер: `ssh -i ~/.ssh/llms_id_rsa root@217.60.62.102`, проект в `/root/cupola`, JDK 17, SDK в `/opt/android-sdk` (platform 35, build-tools 35).
-- Планшет: KENSHI E11, `adb connect 192.168.0.16:5555` (Android 13, MT8781, 1200×2000 @ 240 dpi, вибромотор без amplitude control). Разрешено автономно ставить/запускать/снимать logcat в пределах пакета `cupola`. Если `adb` показывает `offline` — владелец переподнимает `adb tcpip 5555` по USB.
+- Сервер: `ssh -i ~/.ssh/llms_id_rsa root@217.60.62.102`, проект в `/root/cupola`, JDK 17, SDK в `/opt/android-sdk` (platform 35, build-tools 35). Отчёты тестов — `core-dsp/build/test-results/test/*.xml` там же.
+- Планшет: KENSHI E11, `adb connect 192.168.0.16:5555` (Android 13, MT8781, 1200×2000 @ 240 dpi, `VOICE_RECOGNITION` @ 48 кГц — UNPROCESSED не задекларирован; вибромотор без amplitude control). Разрешено автономно ставить/запускать/снимать logcat и скриншоты (`adb exec-out screencap -p`) в пределах пакета `cupola`. Если `adb` показывает `offline` — владелец переподнимает `adb tcpip 5555` по USB. Тестовые сигналы — `aplay` через студийные мониторы, но комната не тихая: результаты «с мониторов» проверять глазами по спектрограмме.
+- Логи: тег `CupolaAudio` (источник, `stats:` раз в минуту — кадры/overruns/latency, `session stopped:`).
 - Коммиты — автономно, локально, без push; версия 0.1.0, тег `v0.1.0` по завершении E0–E5.
 
-## Архитектура (модули)
+## Архитектура (модули и ключевые классы)
 
 ```
-:app            — Compose UI, навигация, ручной DI, гаптика, DataStore
-:core-audio     — AudioRecord, ring buffer, выбор источника (Android library)
-:core-dsp       — FFT, pitch, метрики, калибровка, скоринг  ← БЕЗ Android-зависимостей
-:core-notation  — имена нот RU/EN, октавы, Гц ↔ MIDI ↔ центы
-:core-testdata  — генераторы синтетических сигналов для тестов
+:app            — Compose UI, навигация, ручной DI, сессия, сервис, гаптика, DataStore
+:core-audio     — AudioCapture (AudioRecord), AudioEngine (потоки + ring buffer → Analyzer → StateFlow) — Android library
+:core-dsp       — FFT, pitch, метрики, калибровка, скоринг, сессия, Analyzer  ← БЕЗ Android-зависимостей (зависит от :core-notation)
+:core-notation  — Note/PitchClass, hzToMidi/nearestNote, NoteNames (RU/EN/ruShort/ruFull), центы
+:core-testdata  — Signals (sine/sawtooth/harmonicVoice/noise), PitchContour, Wav — синтетика для тестов
 ```
 
-Ключевая граница: **`:core-dsp`, `:core-notation`, `:core-testdata` — чистый JVM** (`kotlin("jvm")`, JUnit 5 через `kotlin("test")`), тестируются на десктопе и должны остаться пригодными для KMP. Никаких `android.*`/`androidx.*` импортов в них — задача `checkNoAndroidImports` в корневом `build.gradle.kts` валит `check`. Версии — в `gradle/libs.versions.toml`.
+Ключевая граница: **`:core-dsp`, `:core-notation`, `:core-testdata` — чистый JVM** (`kotlin("jvm")`, JUnit 5 через `kotlin("test")`), тестируются на десктопе и должны остаться пригодными для KMP. Никаких `android.*`/`androidx.*` импортов в них — задача `checkNoAndroidImports` в корневом `build.gradle.kts` валит `check`.
 
-Пайплайн (§4 спеки): `mic → AudioRecord 48k → ring buffer → окно 2048/hop 480 Hann → FFT → спектрограмма/гистограмма → pYIN (f0, confidence) → harmonic tracker (k·f0 ± 3%) → метрики на скользящем окне → gate + score → StateFlow<FrameMetrics> (50–100 Гц) → UI + haptics`. Pitch-детектор — за интерфейсом `PitchDetector` (pYIN по умолчанию, MPM в настройках, позже CREPE-tiny/SPICE).
+Пайплайн (§4 спеки) в `core-dsp`: `Framer` (2048/480, Hann) → `PowerSpectrum` (dBFS: синус амплитуды 1 → 0 dB) → `YinPitchDetector` → `NoiseFloor` (RMS-минимум + 10‑й перцентиль по бинам) → `HarmonicTracker` → `RingMetrics` → `PitchStats` (медианная линия) → `VibratoAnalyzer` → `Scorer` (гейты, `ScoreParams`/`ScoreWeights`) → `FrameMetrics`. Всё это собирает `Analyzer` (один поток; настройки — `@Volatile var`). `CalibrationSession` и `SessionAccumulator`/`PointsCounter` — там же.
+
+В `:app`:
+- `AppGraph` (в `CupolaApp`) — синглтон: `SettingsRepository`, `AudioEngine`, `SessionController`, `HapticsController`; коллектор настроек применяет их к движку (`band`, калибровка, A4, k, FFT — с перезапуском). `startSession/stopSession` — единственная точка старта сессии (сервис + гаптика).
+- `analysis/` — `AnalysisViewModel` (сэмплирование метрик 25 Гц для текста, пауза/скролл), `SpectrogramHistory` (60 с × 320 лог-строк, пишется из потока анализа), `SpectrumSnapshot` (двойной буфер), `SessionController` (часы, очки, серия, подсказки).
+- `ui/analysis/` — `AnalysisScreen` (портрет/ландшафт), `TopBar`, `NoteZone`, `SpectrogramZone` (кольцевой `Bitmap`, догрузка на каждом кадре дисплея), `SpectrumZone`; подписи на холстах только через `drawLabel` (защита от выхода за границы). `ui/settings/`, `ui/calibration/`, `ui/onboarding/`, `ui/theme/` (токены §15.4, `SpectrogramColormap`), `ui/components/Primitives.kt`.
+- Навигация — enum `Screen` в `MainActivity` (онбординг → анализ → настройки → калибровка); язык — `attachBaseContext` + `recreate()`.
+- Строки — `strings.xml` (`values`, `values-en`); подсказки `hint_*`, пояснения настроек `settings_*_help`.
 
 ## Инварианты, которые нельзя нарушать
 
-- **Источник аудио**: `UNPROCESSED` (проверять `PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED`), fallback `VOICE_RECOGNITION`. Никогда `MIC`/`DEFAULT`, никогда `NoiseSuppressor`/`AutomaticGainControl` — они убивают полосу ~3 кГц, ради которой всё приложение.
+- **Источник аудио**: `UNPROCESSED` только если задекларирован `PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED` (иначе он ведёт себя как `DEFAULT`), fallback `VOICE_RECOGNITION`. Никогда `MIC`/`DEFAULT`, никогда `NoiseSuppressor`/`AutomaticGainControl` — они убивают полосу ~3 кГц, ради которой всё приложение.
 - **Все метрики относительные** — от личной калибровки (baseline). Абсолютных порогов «звона» не существует; не сравнивать с другими людьми.
-- **Скоринг не поощряет громкость, зажим и продутость**: `ring` засчитывается только при всех гейтах §6.2 одновременно (голос есть, confidence ≥ 0.7, pitchSD ≤ 20 ¢, CPPS-гейт, H1−H2-гейт, SPL ≤ baseline + 12 dB, не SOVT). `RingRatio` нормируется по SPL (`k = 0.7`). Точные формулы — §5–6 спеки, не изобретать свои.
-- **Стабильность высоты считается по медианной линии** (скользящая медиана 200 мс, окно 500 мс), чтобы вибрато не штрафовалось.
+- **Скоринг не поощряет громкость, зажим и продутость**: `ring` засчитывается только при всех гейтах §6.2/§15.5 одновременно (голос есть, confidence ≥ 0.7, pitchSD ≤ 20 ¢, SPL ≤ baseline + 12 dB; CPPS/H1−H2 — backlog). `RingRatio` нормируется по SPL (`k = 0.7`). Точные формулы — §5–6 спеки, не изобретать свои.
+- **Стабильность высоты считается по медианной линии** (скользящая медиана 200 мс + среднее 200 мс, окно 500 мс), чтобы вибрато не штрафовалось.
 - **Без телеметрии и облака**: никаких Firebase/Analytics/Crashlytics, аудио никуда не уходит.
-- **Правило двух слоёв (§7a)**: у каждого понятия певческое имя (для новичка) и акустическое (advanced/тултипы). Приложение **не даёт технических вокальных инструкций** — подсказки описывают, что произошло со звуком, и предлагают только «тише / шаг назад / стоп». Тексты — в `strings.xml` с ключами `glossary.<term>.*` и `hint.<gate>.*`; формулировки подсказок и их приоритет заданы в таблице §7a.
-- **SOVT-режим** (мычание, губная вибрация и т. п.): ring не считается, очки не даются.
+- **Правило двух слоёв (§7a)**: у каждого понятия певческое имя и акустическое. Приложение **не даёт технических вокальных инструкций** — подсказки описывают, что произошло со звуком, и предлагают только «тише / шаг назад / стоп». Слово «очки», не «монеты».
+- **SOVT-режим** (мычание, губная вибрация и т. п.): ring не считается, очки не даются (в v0.1 режим не выбирается, гейт заложен).
 
 ## Тесты
 
-Обязательные проверки `:core-dsp` на синтетике из `:core-testdata` перечислены в §10 спеки с конкретными допусками (синус 220 Гц → A3 ± 1 ¢; 226 Гц → +46 ¢; вибрато 5.5 Гц ±70 ¢ → rate ± 0.3, extent ± 10, pitchSD < 10; одинаковый спектр при разной громкости → `RingRatio_norm` в пределах 1 dB; белый шум → confidence < 0.5; и т. д.). Новый DSP-код — с такими же синтетическими тестами.
+Обязательные проверки `:core-dsp` на синтетике из `:core-testdata` перечислены в §10 спеки с конкретными допусками; сквозной набор — `Spec10SuiteTest` через `Analyzer`, бенчмарк там же (цель < 2 мс/кадр; сервер ≈ 1.6). Новый DSP-код — с такими же синтетическими тестами. Имена тестов в бэктиках не должны содержать `[`/`]`.
 
 ## Этапы
 
-M1 Анализ (MVP) → M2 Калибровка + Тренировка → M3 Удержание + Диапазон → M4 Продвинутое → M5 Экосистема. Подробно — §11. Не тянуть функции следующих этапов в текущий без запроса.
+M1 Анализ (MVP, готов) → M2 Калибровка + Тренировка → M3 Удержание + Диапазон → M4 Продвинутое → M5 Экосистема. Подробно — §11. Не тянуть функции следующих этапов в текущий без запроса.

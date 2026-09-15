@@ -37,6 +37,22 @@ class SpectrogramHistory(
     @Volatile var topDb: Float = -30f
         private set
 
+    /** Log-spaced rows (default) or linear; switching clears the history (settings → «Шкала»). */
+    @Volatile var logScale: Boolean = true
+        set(value) {
+            if (field == value) return
+            field = value
+            binHz = 0.0 // forces prepare() on the next frame
+            clear()
+        }
+
+    fun clear() {
+        levels.fill(0)
+        f0Hz.fill(0f)
+        cents.fill(Float.NaN)
+        head = 0
+    }
+
     private val normFrames = (normSeconds / hopSeconds).roundToInt().coerceAtLeast(1)
     private val peaks = FloatArray(normFrames) { -120f }
     private var peakIdx = 0
@@ -51,10 +67,15 @@ class SpectrogramHistory(
     fun slot(column: Long): Int = (column % columns).toInt()
 
     /** Frequency at the centre of a row. */
-    fun rowHz(row: Int): Double = fMin * (fMax / fMin).pow(1.0 - (row + 0.5) / rows)
+    fun rowHz(row: Int): Double = hzAtFraction((row + 0.5) / rows)
+
+    /** Frequency at a vertical fraction (0 = top = fMax, 1 = bottom = fMin). */
+    fun hzAtFraction(f: Double): Double =
+        if (logScale) fMin * (fMax / fMin).pow(1.0 - f) else fMax - (fMax - fMin) * f
 
     /** Vertical position (0 = top) of a frequency as a fraction of the plot height. */
-    fun yFraction(hz: Double): Float = (1.0 - ln(hz / fMin) / logSpan).toFloat()
+    fun yFraction(hz: Double): Float =
+        if (logScale) (1.0 - ln(hz / fMin) / logSpan).toFloat() else ((fMax - hz) / (fMax - fMin)).toFloat()
 
     override fun onFrame(metrics: FrameMetrics, spectrum: PowerSpectrum) {
         if (binHz != spectrum.binHz) prepare(spectrum)
@@ -100,8 +121,8 @@ class SpectrogramHistory(
         rowCenter = FloatArray(rows)
         val last = spectrum.bins - 1
         for (r in 0 until rows) {
-            val hiHz = fMin * (fMax / fMin).pow(1.0 - r.toDouble() / rows)
-            val loHz = fMin * (fMax / fMin).pow(1.0 - (r + 1.0) / rows)
+            val hiHz = hzAtFraction(r.toDouble() / rows)
+            val loHz = hzAtFraction((r + 1.0) / rows)
             rowLo[r] = ceil(loHz / binHz).toInt().coerceIn(0, last)
             rowHi[r] = floor(hiHz / binHz).toInt().coerceIn(0, last)
             rowCenter[r] = (rowHz(r) / binHz).toFloat().coerceIn(0f, last.toFloat())

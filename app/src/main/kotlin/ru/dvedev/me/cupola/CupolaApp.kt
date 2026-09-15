@@ -34,7 +34,7 @@ class AppGraph(private val app: Application) {
     /** True while the Activity is started; the microphone stops in the background without a session. */
     @Volatile var activityVisible: Boolean = false
 
-    private val isTablet: Boolean = app.resources.configuration.smallestScreenWidthDp >= 600
+    private val isTablet: Boolean = isTabletDevice(app)
 
     /** Settings + the calibration for the current voice/band, or null. */
     val settingsState: StateFlow<Settings> = settings.settings.stateIn(scope, SharingStarted.Eagerly, Settings())
@@ -83,11 +83,26 @@ class AppGraph(private val app: Application) {
     /** Closes the session (from the screen or the notification) and returns its summary. */
     fun stopSession(): SessionSummary? {
         val summary = session.stop()
+        android.util.Log.i("CupolaAudio", "session stopped: overruns=${engine.overruns} readErrors=${engine.readErrors} latency=${"%.1f".format(engine.processingLatencyMs)}ms points=${summary?.points}")
         haptics.stop()
         AnalysisService.stop(app)
         if (!activityVisible) engine.stop()
         return summary
     }
+}
+
+/**
+ * Tablet = `smallestScreenWidthDp ≥ 600` or a physical diagonal ≥ 7". The KENSHI E11 reports
+ * only 500 dp at 240 dpi although it is a 10" device, so the diagonal check matters.
+ */
+fun isTabletDevice(context: Context): Boolean {
+    val cfg = context.resources.configuration
+    if (cfg.smallestScreenWidthDp >= 600) return true
+    val dm = context.resources.displayMetrics
+    if (dm.xdpi <= 0f || dm.ydpi <= 0f) return false
+    val w = dm.widthPixels / dm.xdpi
+    val h = dm.heightPixels / dm.ydpi
+    return kotlin.math.sqrt((w * w + h * h).toDouble()) >= 7.0
 }
 
 class CupolaApp : Application() {

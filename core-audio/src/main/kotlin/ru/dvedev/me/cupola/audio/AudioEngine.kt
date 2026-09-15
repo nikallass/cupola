@@ -138,6 +138,9 @@ class AudioEngine(
             Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
             val buf = FloatArray(hop)
             val current = analyzer
+            var frames = 0L
+            var maxLatency = 0.0
+            var lastLog = System.nanoTime()
             while (running.get()) {
                 if (!samplesReady.tryAcquire(50, TimeUnit.MILLISECONDS)) continue
                 while (ring.available() >= hop) {
@@ -146,7 +149,15 @@ class AudioEngine(
                         for (l in listeners) l.onFrame(m, spectrum)
                         _metrics.value = m
                         processingLatencyMs = (System.nanoTime() - lastChunkNanos) / 1e6
+                        frames++
+                        if (processingLatencyMs > maxLatency) maxLatency = processingLatencyMs
                     }
+                }
+                val now = System.nanoTime()
+                if (now - lastLog > STATS_INTERVAL_NS) {
+                    Log.i(TAG, "stats: frames=$frames overruns=$overruns readErrors=$readErrors latencyNow=${"%.1f".format(processingLatencyMs)}ms latencyMax=${"%.1f".format(maxLatency)}ms")
+                    maxLatency = 0.0
+                    lastLog = now
                 }
             }
         }, "cupola-analysis")
@@ -176,5 +187,6 @@ class AudioEngine(
 
     companion object {
         private const val TAG = "CupolaAudio"
+        private const val STATS_INTERVAL_NS = 60_000_000_000L
     }
 }

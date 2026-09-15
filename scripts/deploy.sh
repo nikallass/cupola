@@ -4,6 +4,7 @@
 #   scripts/deploy.sh              rsync → server → :app:assembleDebug → scp APK → adb install → launch
 #   scripts/deploy.sh --test       only run ./gradlew :core-dsp:test (and other JVM tests) on the server
 #   scripts/deploy.sh --check      run ./gradlew check (tests + no-android-imports guard)
+#   scripts/deploy.sh --release    build :app:assembleRelease (debug-signed) → build/cupola-release.apk
 #   scripts/deploy.sh --no-install build and download the APK, do not install
 #   scripts/deploy.sh --logcat     after launching, tail logcat of the app process (Ctrl+C to stop)
 #   scripts/deploy.sh -- <args>    pass extra Gradle arguments, e.g. -- --tests "*.PitchTest"
@@ -22,10 +23,9 @@ ANDROID_HOME_REMOTE="/opt/android-sdk"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCAL_APK_DIR="$ROOT/build"
-LOCAL_APK="$LOCAL_APK_DIR/cupola-debug.apk"
-REMOTE_APK="$REMOTE_DIR/app/build/outputs/apk/debug/app-debug.apk"
 
 MODE="build"
+VARIANT="debug"
 INSTALL=1
 LOGCAT=0
 EXTRA_ARGS=()
@@ -34,6 +34,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --test) MODE="test" ;;
     --check) MODE="check" ;;
+    --release) VARIANT="release" ;;
     --no-install) INSTALL=0 ;;
     --logcat) LOGCAT=1 ;;
     --) shift; EXTRA_ARGS=("$@"); break ;;
@@ -56,10 +57,13 @@ rsync -az --delete \
   -e "ssh -i $SSH_KEY -o BatchMode=yes" \
   "$ROOT/" "$SERVER:$REMOTE_DIR/"
 
+LOCAL_APK="$LOCAL_APK_DIR/cupola-$VARIANT.apk"
+REMOTE_APK="$REMOTE_DIR/app/build/outputs/apk/$VARIANT/app-$VARIANT.apk"
+
 case "$MODE" in
   test)  GRADLE_TASKS=":core-dsp:test :core-notation:test" ;;
   check) GRADLE_TASKS="check" ;;
-  build) GRADLE_TASKS=":app:assembleDebug" ;;
+  build) GRADLE_TASKS=$([ "$VARIANT" = "release" ] && echo ":app:assembleRelease" || echo ":app:assembleDebug") ;;
 esac
 
 GRADLE_EXTRA=""

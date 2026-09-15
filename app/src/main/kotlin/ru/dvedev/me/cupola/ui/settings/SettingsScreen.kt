@@ -20,12 +20,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import ru.dvedev.me.cupola.AppGraph
+import ru.dvedev.me.cupola.isTabletDevice
 import ru.dvedev.me.cupola.R
 import ru.dvedev.me.cupola.audio.AudioSourcePreference
 import ru.dvedev.me.cupola.audio.EngineState
@@ -58,7 +59,7 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onCalibrate: () -> Unit,
     val t = CupolaTheme.type
     fun update(f: (Settings) -> Settings) = scope.launch { graph.settings.update(f) }
     var advancedOpen by rememberSaveable { mutableStateOf(false) }
-    val tablet = LocalConfiguration.current.smallestScreenWidthDp >= 600
+    val tablet = isTabletDevice(LocalContext.current)
 
     Column(Modifier.fillMaxSize().background(c.panel).systemBarsPadding()) {
         ZoneHeader(
