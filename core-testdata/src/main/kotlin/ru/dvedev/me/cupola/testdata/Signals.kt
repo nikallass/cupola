@@ -19,17 +19,24 @@ data class Formant(val centerHz: Double, val bandwidthHz: Double, val gainDb: Do
     }
 }
 
+/** Flat gain applied to every harmonic that falls inside `[loHz, hiHz]` — an idealised "ring band boost". */
+data class BandGain(val loHz: Double, val hiHz: Double, val gainDb: Double) {
+    fun gainDbAt(hz: Double): Double = if (hz in loHz..hiHz) gainDb else 0.0
+}
+
 /**
  * Additive harmonic voice: harmonics `k·f0(t)` up to Nyquist with a spectral tilt of
- * [tiltDbPerOctave] and optional [formants] (vowel formants, a boosted ring band, …).
- * Peak amplitude is normalised to [amplitude] (full scale = 1).
+ * [tiltDbPerOctave], optional [formants] (vowel formants) and [bandGains] (flat boosts).
+ * Peak amplitude is normalised to [amplitude] (full scale = 1) unless [normalise] is false.
  */
 data class VoiceSpec(
     val contour: PitchContour,
     val tiltDbPerOctave: Double = -12.0,
     val formants: List<Formant> = emptyList(),
+    val bandGains: List<BandGain> = emptyList(),
     val maxHarmonics: Int = 60,
     val amplitude: Double = 0.3,
+    val normalise: Boolean = true,
 )
 
 /** Synthetic signal generators for the SPEC §10 test suite. All output is mono `DoubleArray`, full scale ±1. */
@@ -63,13 +70,14 @@ object Signals {
                 val hz = k * f0
                 var gainDb = spec.tiltDbPerOctave * ln(k.toDouble()) / ln(2.0)
                 for (f in spec.formants) gainDb += f.gainDbAt(hz)
+                for (b in spec.bandGains) gainDb += b.gainDbAt(hz)
                 phases[k - 1] += twoPiOverFs * hz
                 s += dbToLinear(gainDb) * sin(phases[k - 1])
                 k++
             }
             out[i] = s
         }
-        normalisePeak(out, spec.amplitude)
+        if (spec.normalise) normalisePeak(out, spec.amplitude) else for (i in out.indices) out[i] *= spec.amplitude
         return out
     }
 
