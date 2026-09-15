@@ -16,8 +16,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import ru.dvedev.me.cupola.analysis.PointsEvent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -61,6 +74,7 @@ fun NoteZone(
     notation: NotationMode,
     accidentals: Accidentals,
     hintsEnabled: Boolean,
+    pointsAnimation: Boolean,
     onTapNote: (Note?) -> Unit,
     onLongPressArc: () -> Unit,
     modifier: Modifier = Modifier,
@@ -131,7 +145,10 @@ fun NoteZone(
                 Column(Modifier.fillMaxWidth().padding(horizontal = CupolaDimens.paddingH, vertical = 10.dp)) {
                     noteBlock(Modifier.fillMaxWidth())
                     Spacer(Modifier.height(16.dp))
-                    CupolaArc(ring = m?.ring ?: 0.0, valueText = arcValue, modifier = arcModifier.width(180.dp).align(Alignment.CenterHorizontally))
+                    Box(Modifier.width(180.dp).align(Alignment.CenterHorizontally)) {
+                        CupolaArc(ring = m?.ring ?: 0.0, valueText = arcValue, modifier = arcModifier.fillMaxWidth())
+                        if (pointsAnimation) PointsBurst(session.lastPoints, Modifier.matchParentSize())
+                    }
                 }
             } else {
                 Row(
@@ -140,7 +157,10 @@ fun NoteZone(
                 ) {
                     noteBlock(Modifier.weight(1f))
                     Spacer(Modifier.width(12.dp))
-                    CupolaArc(ring = m?.ring ?: 0.0, valueText = arcValue, modifier = arcModifier.width(150.dp))
+                    Box(Modifier.width(150.dp)) {
+                        CupolaArc(ring = m?.ring ?: 0.0, valueText = arcValue, modifier = arcModifier.fillMaxWidth())
+                        if (pointsAnimation) PointsBurst(session.lastPoints, Modifier.matchParentSize())
+                    }
                 }
             }
             HintRow(if (hintsEnabled) session.hint else null, Modifier.padding(horizontal = CupolaDimens.paddingH).padding(bottom = 6.dp))
@@ -207,6 +227,47 @@ private fun CupolaArc(ring: Double, valueText: String, modifier: Modifier = Modi
             }
         }
         Text(valueText, style = t.ringValue, color = c.goldInk, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+/** A flying dot of the points animation; [t] runs 0→1 over its life. */
+private class Dot(val x: Float, val size: Float, val green: Boolean, val drift: Float) {
+    var t by mutableFloatStateOf(0f)
+}
+
+/**
+ * Gold dots rising out of the cupola arc on every points award (SPEC §15.3): one per
+ * point of the portion, green at score ≥ 0.85, size ∝ ring. Purely decorative and
+ * switchable in settings.
+ */
+@Composable
+private fun PointsBurst(event: PointsEvent?, modifier: Modifier = Modifier) {
+    val c = CupolaTheme.colors
+    val dots = remember { mutableStateListOf<Dot>() }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(event?.id) {
+        val e = event ?: return@LaunchedEffect
+        repeat(e.portion.coerceIn(1, 3)) { i ->
+            val dot = Dot(x = (i - (e.portion - 1) / 2f) * 0.18f, size = 4f + 5f * e.ring.toFloat(), green = e.green, drift = (i % 2 * 2 - 1) * 0.08f)
+            dots += dot
+            scope.launch {
+                delay(i * 90L)
+                animate(0f, 1f, animationSpec = tween(1100, easing = FastOutSlowInEasing)) { v, _ -> dot.t = v }
+                dots -= dot
+            }
+        }
+    }
+    Canvas(modifier) {
+        val cx = size.width / 2
+        val cy = size.height * 0.55f
+        for (d in dots) {
+            val t = d.t
+            if (t <= 0f) continue
+            val x = cx + (d.x + d.drift * t) * size.width
+            val y = cy - t * size.height * 0.9f
+            val alpha = (1f - t).coerceIn(0f, 1f)
+            drawCircle((if (d.green) c.ok else c.gold).copy(alpha = alpha), radius = d.size.dp.toPx() * (1f + 0.3f * t), center = Offset(x, y))
+        }
     }
 }
 

@@ -23,9 +23,28 @@ class SpectrumSnapshot(private val noise: () -> NoiseFloor?) : FrameListener {
 
     private var buffers: Array<Frame>? = null
     @Volatile private var current = 0
+    @Volatile private var frozen: Frame? = null
 
-    /** Newest complete frame, or null before the first one. */
-    val latest: Frame? get() = buffers?.get(current)
+    /** Newest complete frame (or the frozen one while paused), or null before the first one. */
+    val latest: Frame? get() = frozen ?: buffers?.get(current)
+
+    /** Keeps a copy of the current frame until [unfreeze] (pause, T-056). */
+    fun freeze() {
+        val src = buffers?.get(current) ?: return
+        val f = Frame(src.db.size)
+        src.db.copyInto(f.db)
+        src.floorDb.copyInto(f.floorDb)
+        f.binHz = src.binHz
+        f.harmonics = src.harmonics
+        f.f0Hz = src.f0Hz
+        f.voiced = src.voiced
+        f.timeSec = src.timeSec
+        frozen = f
+    }
+
+    fun unfreeze() {
+        frozen = null
+    }
 
     override fun onFrame(metrics: FrameMetrics, spectrum: PowerSpectrum) {
         var b = buffers

@@ -44,6 +44,25 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
     var calibrationPrompt: Boolean by mutableStateOf(false)
         private set
 
+    /** Pause (T-056): readouts freeze on the last frame, the spectrogram can be scrolled back. */
+    var frozenMetrics: FrameMetrics? by mutableStateOf(null)
+        private set
+    var pausedHead: Long? by mutableStateOf(null)
+        private set
+    var scrollColumns: Int by mutableStateOf(0)
+        private set
+
+    val paused: Boolean get() = pausedHead != null
+
+    /** Last column of the spectrogram window: live (null) or the paused position minus the scroll. */
+    val viewEnd: Long? get() = pausedHead?.let { (it - scrollColumns).coerceAtLeast(0) }
+
+    fun scrollBy(columns: Int) {
+        val head = pausedHead ?: return
+        val maxBack = (minOf(head, spectrogram.columns.toLong()) - 800L).coerceAtLeast(0L).toInt()
+        scrollColumns = (scrollColumns + columns).coerceIn(0, maxBack)
+    }
+
     init {
         engine.addListener(spectrogram)
         engine.addListener(spectrum)
@@ -68,7 +87,7 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
             calibrationPrompt = true
             return false
         }
-        session.start()
+        graph.startSession()
         return true
     }
 
@@ -76,9 +95,22 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
         calibrationPrompt = false
     }
 
-    fun stopSession(): SessionSummary? = session.stop()
+    fun stopSession(): SessionSummary? = graph.stopSession()
 
-    fun togglePause() = session.togglePause()
+    fun togglePause() {
+        if (pausedHead == null) {
+            frozenMetrics = uiMetrics.value
+            pausedHead = spectrogram.head
+            scrollColumns = 0
+            spectrum.freeze()
+        } else {
+            frozenMetrics = null
+            pausedHead = null
+            scrollColumns = 0
+            spectrum.unfreeze()
+        }
+        session.togglePause()
+    }
 
     fun dismissSummary() = session.dismissSummary()
 

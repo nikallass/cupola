@@ -58,11 +58,13 @@ class SessionController(private val hopSeconds: Double) : FrameListener {
         _state.value = SessionUiState(active = true)
     }
 
+    val isPaused: Boolean get() = paused
+
     fun stop(): SessionSummary? {
         val acc = accumulator ?: return null
         accumulator = null
         val summary = acc.summary()
-        _state.value = SessionUiState(active = false, summary = summary, points = summary.points, elapsedSec = summary.durationSec)
+        _state.value = SessionUiState(active = false, paused = paused, summary = summary, points = summary.points, elapsedSec = summary.durationSec)
         return summary
     }
 

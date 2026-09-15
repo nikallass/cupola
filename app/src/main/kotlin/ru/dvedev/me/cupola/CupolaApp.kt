@@ -14,6 +14,9 @@ import ru.dvedev.me.cupola.analysis.SessionController
 import ru.dvedev.me.cupola.audio.AudioEngine
 import ru.dvedev.me.cupola.dsp.AnalyzerConfig
 import ru.dvedev.me.cupola.dsp.calibration.Calibration
+import ru.dvedev.me.cupola.dsp.session.SessionSummary
+import ru.dvedev.me.cupola.haptics.HapticsController
+import ru.dvedev.me.cupola.service.AnalysisService
 import ru.dvedev.me.cupola.settings.Settings
 import ru.dvedev.me.cupola.settings.SettingsRepository
 
@@ -21,11 +24,17 @@ import ru.dvedev.me.cupola.settings.SettingsRepository
  * Manual dependency graph (SPEC §15.2: no Hilt). One instance per process, reachable
  * through [Context.appGraph]; screens get what they need from here via their ViewModels.
  */
-class AppGraph(app: Application) {
+class AppGraph(private val app: Application) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val settings = SettingsRepository(app)
     val engine = AudioEngine(app, AnalyzerConfig())
     val session = SessionController(engine.analyzer.hopSeconds)
+    val haptics = HapticsController(app, scope)
+
+    /** True while the Activity is started; the microphone stops in the background without a session. */
+    @Volatile var activityVisible: Boolean = false
+
+    private val isTablet: Boolean = app.resources.configuration.smallestScreenWidthDp >= 600
 
     /** Settings + the calibration for the current voice/band, or null. */
     val settingsState: StateFlow<Settings> = settings.settings.stateIn(scope, SharingStarted.Eagerly, Settings())
@@ -55,6 +64,29 @@ class AppGraph(app: Application) {
                 }
             }
         }
+    }
+
+    /** Effective haptics switch: explicit setting, else on for phones and off for tablets (SPEC §15.5). */
+    fun hapticsEnabled(): Boolean = settingsState.value.haptics ?: !isTablet
+
+    /** Opens a session: points, hints, foreground service, haptics. */
+    fun startSession() {
+        if (session.isActive) return
+        session.start()
+        AnalysisService.start(app)
+        haptics.start(
+            score = { engine.metrics.value?.score ?: 0.0 },
+            enabled = { session.isActive && !session.state.value.paused && hapticsEnabled() },
+        )
+    }
+
+    /** Closes the session (from the screen or the notification) and returns its summary. */
+    fun stopSession(): SessionSummary? {
+        val summary = session.stop()
+        haptics.stop()
+        AnalysisService.stop(app)
+        if (!activityVisible) engine.stop()
+        return summary
     }
 }
 

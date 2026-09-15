@@ -156,4 +156,24 @@
     <string name="settings_weights_help">Shares of the indicators in the total score. Normalised to their sum.</string>
     <string name="settings_reset_advanced">Reset</string>
     <string name="settings_tokens">Palette</string>
+
+    <string name="notif_channel">Session</string>
+    <string name="notif_channel_desc">Cupola is listening while a session runs</string>
+    <string name="notif_listening">Cupola is listening</string>
+    <string name="notif_listening_note">Cupola is listening · %1$s</string>
+
+    <string name="ob_step">step %1$d of %2$d</string>
+    <string name="ob_1_title">Everything is relative</string>
+    <string name="ob_1_body">Cupola shows what happens to the sound: the note, the overtones and the "ring" — a bright band around 3 kHz that lets the voice carry. Every number is relative to your own voice on this device. Compare yourself with yesterday\'s you, not with others.</string>
+    <string name="ob_1_soft">The app never rewards loudness. A quiet ringing sound is worth more than a loud boomy one.</string>
+    <string name="ob_1_haptics">Vibration can leak into the microphone: hold the phone or put it on something soft.</string>
+    <string name="ob_2_title">Microphone</string>
+    <string name="ob_2_body">Audio is analysed on the device and never sent anywhere.</string>
+    <string name="ob_3_title">Voice type</string>
+    <string name="ob_3_body">Only used for the cupola band. Not sure — leave "not set"; you can change it in settings.</string>
+    <string name="ob_4_title">Calibration</string>
+    <string name="ob_4_body">6 seconds: 2 s of silence and 4 s of an "ah". Analysis works without it, but points are not counted.</string>
+    <string name="ob_next">Next</string>
+    <string name="ob_calibrate_now">Calibrate now</string>
+    <string name="ob_later">Later</string>
 </resources>

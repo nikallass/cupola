@@ -49,6 +49,7 @@ import ru.dvedev.me.cupola.ui.analysis.LocalCentsThresholds
 import ru.dvedev.me.cupola.ui.calibration.CalibrationScreen
 import ru.dvedev.me.cupola.ui.components.PillButton
 import ru.dvedev.me.cupola.ui.components.PillStyle
+import ru.dvedev.me.cupola.ui.onboarding.OnboardingScreen
 import ru.dvedev.me.cupola.ui.preview.TokensPreviewScreen
 import ru.dvedev.me.cupola.ui.settings.SettingsScreen
 import ru.dvedev.me.cupola.ui.theme.CupolaTheme
@@ -83,7 +84,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { ANALYSIS, SETTINGS, CALIBRATION, TOKENS }
+private enum class Screen { ONBOARDING, ANALYSIS, SETTINGS, CALIBRATION, TOKENS }
 
 @Composable
 private fun Root(onLanguageChanged: () -> Unit) {
@@ -101,8 +102,8 @@ private fun Root(onLanguageChanged: () -> Unit) {
     DisposableEffect(lifecycleOwner, granted) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> if (granted) vm.startListening()
-                Lifecycle.Event.ON_STOP -> vm.stopListeningIfIdle()
+                Lifecycle.Event.ON_START -> { graph.activityVisible = true; if (granted) vm.startListening() }
+                Lifecycle.Event.ON_STOP -> { graph.activityVisible = false; vm.stopListeningIfIdle() }
                 else -> Unit
             }
         }
@@ -112,8 +113,23 @@ private fun Root(onLanguageChanged: () -> Unit) {
     }
 
     val c = CupolaTheme.colors
-    var screen by rememberSaveable { mutableStateOf(Screen.ANALYSIS) }
+    var screen by rememberSaveable { mutableStateOf(if (settings.onboardingDone) Screen.ANALYSIS else Screen.ONBOARDING) }
     var returnTo by rememberSaveable { mutableStateOf(Screen.ANALYSIS) }
+    if (screen == Screen.ONBOARDING) {
+        OnboardingScreen(
+            graph,
+            onCalibrate = {
+                granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                returnTo = Screen.ANALYSIS
+                screen = Screen.CALIBRATION
+            },
+            onFinished = {
+                granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                screen = Screen.ANALYSIS
+            },
+        )
+        return
+    }
     if (!granted) {
         Box(Modifier.fillMaxSize().background(c.panel).systemBarsPadding().padding(24.dp), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -128,6 +144,7 @@ private fun Root(onLanguageChanged: () -> Unit) {
         screen = Screen.CALIBRATION
     }
     when (screen) {
+        Screen.ONBOARDING -> Unit // handled above
         Screen.ANALYSIS -> AnalysisScreen(vm, onSettings = { screen = Screen.SETTINGS }, onCalibrate = { openCalibration(Screen.ANALYSIS) })
         Screen.SETTINGS -> {
             BackHandler { screen = Screen.ANALYSIS }

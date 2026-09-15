@@ -10,8 +10,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -55,6 +59,7 @@ fun SpectrogramZone(
     harmonics: List<Harmonic>,
     paused: Boolean,
     viewEnd: Long?, // when paused: last column to show, else null = live
+    onScroll: (columns: Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val c = CupolaTheme.colors
@@ -79,8 +84,19 @@ fun SpectrogramZone(
             },
             right = { Label(stringResource(R.string.spectrogram_axis_hint)) },
         )
+        var plotWidthPx by remember { mutableFloatStateOf(1f) }
         Box(Modifier.fillMaxSize()) {
-            Canvas(Modifier.fillMaxSize()) {
+            Canvas(
+                Modifier.fillMaxSize().pointerInput(paused) {
+                    if (paused) {
+                        detectHorizontalDragGestures { change, dragAmount ->
+                            change.consume()
+                            // dragging right reveals older columns
+                            onScroll((dragAmount / (plotWidthPx / VISIBLE_COLUMNS)).toInt())
+                        }
+                    }
+                },
+            ) {
                 tick.longValue // subscribe to display frames
                 val gutterL = 40.dp.toPx()
                 val gutterR = 26.dp.toPx()
@@ -88,6 +104,7 @@ fun SpectrogramZone(
                 val plotW = size.width - gutterL - gutterR
                 val plotH = size.height - gutterB
                 if (plotW <= 0 || plotH <= 0) return@Canvas
+                plotWidthPx = plotW
 
                 val end = viewEnd ?: history.head
                 val image = renderer.render(end)
@@ -142,11 +159,13 @@ fun SpectrogramZone(
                     val m = measurer.measure(label, axisStyle)
                     drawLabel(measurer, label, Offset(gutterL - 6.dp.toPx() - m.size.width, y - m.size.height / 2), axisStyle.copy(color = c.dim))
                 }
-                // time axis
+                // time axis (relative to the live edge; when scrolled back the offset is added)
+                val backSec = if (viewEnd != null) ((history.head - viewEnd) * 0.01).toInt() else 0
                 for (sec in 0..8 step 2) {
                     val x = gutterL + plotW * (1 - sec / 8f)
                     drawLine(c.line, Offset(x, plotH), Offset(x, plotH + 3.dp.toPx()), strokeWidth = 1f)
-                    val label = if (sec == 0) "0" else "−$sec"
+                    val total = sec + backSec
+                    val label = if (total == 0) "0" else "−$total"
                     val m = measurer.measure(label, axisStyle)
                     drawLabel(measurer, label, Offset((x - m.size.width / 2).coerceIn(gutterL, gutterL + plotW - m.size.width), plotH + 3.dp.toPx()), axisStyle.copy(color = c.dim))
                 }

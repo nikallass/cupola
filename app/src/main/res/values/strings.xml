@@ -165,4 +165,26 @@
     <string name="settings_weights_help">Доли показателей в общем балле. Нормируются на сумму.</string>
     <string name="settings_reset_advanced">Сбросить</string>
     <string name="settings_tokens">Палитра</string>
+
+    <!-- notification -->
+    <string name="notif_channel">Сессия</string>
+    <string name="notif_channel_desc">Купол слушает, пока идёт сессия</string>
+    <string name="notif_listening">Купол слушает</string>
+    <string name="notif_listening_note">Купол слушает · %1$s</string>
+
+    <!-- onboarding -->
+    <string name="ob_step">шаг %1$d из %2$d</string>
+    <string name="ob_1_title">Всё относительно</string>
+    <string name="ob_1_body">Купол показывает, что происходит со звуком: ноту, обертоны и «звон» — яркую полосу около 3 кГц, которая даёт голосу лететь. Все числа считаются относительно вашего собственного голоса на этом устройстве. Сравнивайте себя с собой вчерашним, а не с другими.</string>
+    <string name="ob_1_soft">Приложение никогда не награждает громкость. Тихий звонкий звук ценнее громкого гулкого.</string>
+    <string name="ob_1_haptics">Вибрация может попасть в микрофон: держите телефон в руке или на мягком.</string>
+    <string name="ob_2_title">Микрофон</string>
+    <string name="ob_2_body">Звук анализируется на устройстве и никуда не отправляется.</string>
+    <string name="ob_3_title">Тип голоса</string>
+    <string name="ob_3_body">Нужен только для полосы «купола». Не уверены — оставьте «не задан», это можно поменять в настройках.</string>
+    <string name="ob_4_title">Калибровка</string>
+    <string name="ob_4_body">6 секунд: 2 с тишины и 4 с звука «а». Без неё анализ работает, но очки не считаются.</string>
+    <string name="ob_next">Дальше</string>
+    <string name="ob_calibrate_now">Калибровать сейчас</string>
+    <string name="ob_later">Позже</string>
 </resources>

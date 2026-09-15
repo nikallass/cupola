@@ -1,5 +1,10 @@
 package ru.dvedev.me.cupola.ui.analysis
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -17,7 +22,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.dvedev.me.cupola.R
@@ -34,8 +41,18 @@ import ru.dvedev.me.cupola.ui.theme.CupolaTheme
  */
 @Composable
 fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: () -> Unit) {
-    val metrics by vm.uiMetrics.collectAsStateWithLifecycle()
+    val liveMetrics by vm.uiMetrics.collectAsStateWithLifecycle()
+    val metrics = if (vm.paused) vm.frozenMetrics else liveMetrics
     val session by vm.session.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    // Android 13+: ask for notification permission once, right before the first session
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { vm.startSession() }
+    val startSession: () -> Unit = {
+        val needsAsk = Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+            vm.calibration.value != null
+        if (needsAsk) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS) else vm.startSession()
+    }
     val settings by vm.settings.collectAsStateWithLifecycle()
     val calibration by vm.calibration.collectAsStateWithLifecycle()
     val c = CupolaTheme.colors
@@ -54,7 +71,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: (
                 band = band,
                 customBand = settings.useCustomBand,
                 session = session,
-                onStartStop = { if (session.active) vm.stopSession() else vm.startSession() },
+                onStartStop = { if (session.active) vm.stopSession() else startSession() },
                 onPause = { vm.togglePause() },
                 onSettings = onSettings,
                 compact = narrow,
@@ -63,7 +80,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: (
                 Row(Modifier.fillMaxSize()) {
                     NoteZone(
                         metrics = metrics, session = session, targetNote = vm.targetNote, baselineDb = baseline,
-                        notation = notation, accidentals = accidentals, hintsEnabled = settings.hints,
+                        notation = notation, accidentals = accidentals, hintsEnabled = settings.hints, pointsAnimation = settings.pointsAnimation,
                         onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onCalibrate,
                         modifier = Modifier.width(CupolaDimens.landscapeNoteWidth).fillMaxHeight(),
                         compact = true,
@@ -72,13 +89,13 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: (
                     Column(Modifier.fillMaxSize()) {
                         SpectrogramZone(
                             history = vm.spectrogram, band = band, targetNote = vm.targetNote, harmonics = harmonics,
-                            paused = session.paused, viewEnd = null,
+                            paused = vm.paused, viewEnd = vm.viewEnd, onScroll = vm::scrollBy,
                             modifier = Modifier.fillMaxWidth().weight(0.6f),
                         )
                         ZoneDivider()
                         SpectrumZone(
                             snapshot = vm.spectrum, band = band, ringNormDb = metrics?.ringRatioNorm, baselineDb = baseline,
-                            paused = session.paused, topDb = { vm.spectrogram.topDb },
+                            paused = vm.paused, topDb = { vm.spectrogram.topDb },
                             modifier = Modifier.fillMaxWidth().weight(0.4f),
                         )
                     }
@@ -86,20 +103,20 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: (
             } else {
                 NoteZone(
                     metrics = metrics, session = session, targetNote = vm.targetNote, baselineDb = baseline,
-                    notation = notation, accidentals = accidentals, hintsEnabled = settings.hints,
+                    notation = notation, accidentals = accidentals, hintsEnabled = settings.hints, pointsAnimation = settings.pointsAnimation,
                     onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onCalibrate,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 ZoneDivider()
                 SpectrogramZone(
                     history = vm.spectrogram, band = band, targetNote = vm.targetNote, harmonics = harmonics,
-                    paused = session.paused, viewEnd = null,
+                    paused = vm.paused, viewEnd = vm.viewEnd, onScroll = vm::scrollBy,
                     modifier = Modifier.fillMaxWidth().weight(1f),
                 )
                 ZoneDivider()
                 SpectrumZone(
                     snapshot = vm.spectrum, band = band, ringNormDb = metrics?.ringRatioNorm, baselineDb = baseline,
-                    paused = session.paused, topDb = { vm.spectrogram.topDb },
+                    paused = vm.paused, topDb = { vm.spectrogram.topDb },
                     modifier = Modifier.fillMaxWidth().height(CupolaDimens.spectrumHeight),
                 )
             }

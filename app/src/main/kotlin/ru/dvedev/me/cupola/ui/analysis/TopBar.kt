@@ -77,14 +77,12 @@ fun TopBar(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(formatTime(session.elapsedSec), style = t.stats, color = if (session.active) c.ink else c.dim)
             Text(session.points.toString(), style = t.stats, color = c.goldInk)
-            if (session.active) {
-                PillButton(
-                    text = stringResource(if (session.paused) R.string.action_resume else R.string.action_pause),
-                    onClick = onPause,
-                    style = PillStyle.Outline,
-                    active = session.paused,
-                )
-            }
+            PillButton(
+                text = stringResource(if (session.paused) R.string.action_resume else R.string.action_pause),
+                onClick = onPause,
+                style = PillStyle.Outline,
+                active = session.paused,
+            )
             PillButton(
                 text = stringResource(if (session.active) R.string.action_stop else R.string.action_start),
                 onClick = onStartStop,
