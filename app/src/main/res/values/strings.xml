@@ -189,4 +189,10 @@
     <string name="ob_next">Дальше</string>
     <string name="ob_calibrate_now">Калибровать сейчас</string>
     <string name="ob_later">Позже</string>
+    <!-- why the ring is not counted (note zone header) -->
+    <string name="gate_not_calibrated">купол не считается: нет калибровки</string>
+    <string name="gate_pushed">купол не считается: громче калибровки</string>
+    <string name="gate_unstable">купол не считается: высота плывёт</string>
+    <string name="gate_low_confidence">купол не считается: нет уверенной высоты</string>
+    <string name="gate_sovt">купол не считается: разминка</string>
 </resources>

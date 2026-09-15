@@ -12,6 +12,7 @@ import ru.dvedev.me.cupola.dsp.metrics.VibratoAnalyzer
 import ru.dvedev.me.cupola.dsp.metrics.VoiceType
 import ru.dvedev.me.cupola.dsp.pitch.HarmonicCombRefiner
 import ru.dvedev.me.cupola.dsp.pitch.PitchDetector
+import ru.dvedev.me.cupola.dsp.pitch.PitchTracker
 import ru.dvedev.me.cupola.dsp.pitch.YinPitchDetector
 import ru.dvedev.me.cupola.dsp.score.Gate
 import ru.dvedev.me.cupola.dsp.score.ScoreInput
@@ -60,6 +61,9 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
     val pitchDetector: PitchDetector = pitchDetector ?: YinPitchDetector(fftSize)
     val noise = NoiseFloor(spectrum.bins, hopSeconds)
     val combRefiner = HarmonicCombRefiner()
+    val pitchTracker = PitchTracker(combRefiner)
+    /** Debug hook: raw time-domain estimate and the tracked result of every voiced frame. */
+    @Volatile var pitchTrace: ((raw: ru.dvedev.me.cupola.dsp.pitch.PitchEstimate, out: ru.dvedev.me.cupola.dsp.pitch.PitchEstimate) -> Unit)? = null
     val harmonics = HarmonicTracker(maxHz = minOf(8000.0, spectrum.nyquistHz))
     val pitchStats = PitchStats(hopSeconds)
     val vibrato = VibratoAnalyzer(hopSeconds)
@@ -81,13 +85,10 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
         val spl = RingMetrics.splDbfs(raw)
         val voice = noise.update(spectrum.db, spl)
         val raw0 = if (voice) pitchDetector.estimate(raw, sampleRate) else ru.dvedev.me.cupola.dsp.pitch.PitchEstimate.NONE
-        // spectral comb check: fixes octave / bass-line slips of the time-domain detector
-        val pitch = if (raw0.found && noise.initialized) {
-            val r = combRefiner.refine(raw0, spectrum, noise)
-            ru.dvedev.me.cupola.dsp.pitch.PitchEstimate(r.f0Hz, r.confidence)
-        } else {
-            raw0
-        }
+        // spectral tracking (PitchTracker): harmonic-comb candidates + YIN octaves, continuity
+        // penalty, delayed jumps — fixes octave / bass-line slips on real recordings
+        val pitch = if (voice && noise.initialized) pitchTracker.update(raw0, spectrum, noise, timeSec) else raw0
+        pitchTrace?.invoke(raw0, pitch)
         val trusted = voice && pitch.found && pitch.confidence >= confidenceMin
         val f0 = if (trusted) pitch.f0Hz else 0.0
 
@@ -147,6 +148,7 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
 
     /** Forget contour and smoother state (new phrase / after a pause); keeps the noise floor. */
     fun resetContour() {
+        pitchTracker.reset()
         pitchStats.reset()
         vibrato.reset()
         scorer.reset()

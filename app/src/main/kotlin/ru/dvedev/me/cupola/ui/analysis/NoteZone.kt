@@ -47,6 +47,7 @@ import ru.dvedev.me.cupola.analysis.HintKey
 import ru.dvedev.me.cupola.analysis.SessionUiState
 import ru.dvedev.me.cupola.dsp.FrameMetrics
 import ru.dvedev.me.cupola.dsp.metrics.VibratoKind
+import ru.dvedev.me.cupola.dsp.score.Gate
 import ru.dvedev.me.cupola.notation.Accidentals
 import ru.dvedev.me.cupola.notation.NotationMode
 import ru.dvedev.me.cupola.notation.Note
@@ -114,10 +115,20 @@ fun NoteZone(
                     Badge(if (targetNote != null) stringResource(R.string.badge_target) else stringResource(R.string.badge_live))
                 },
                 right = {
-                    Label(
-                        if (targetNote != null) stringResource(R.string.target_prefix) + " " + NoteNames.label(targetNote, notation, accidentals).joined
-                        else stringResource(R.string.tap_to_pin),
-                    )
+                    // why the ring is not being counted right now (SPEC §6.2 gates), else the target / tap hint
+                    val gateText = if (m != null && m.voice && !display.counted) when (display.gate) {
+                        Gate.NOT_CALIBRATED -> stringResource(R.string.gate_not_calibrated)
+                        Gate.PUSHED -> stringResource(R.string.gate_pushed)
+                        Gate.UNSTABLE_PITCH -> stringResource(R.string.gate_unstable)
+                        Gate.LOW_CONFIDENCE -> stringResource(R.string.gate_low_confidence)
+                        Gate.SOVT -> stringResource(R.string.gate_sovt)
+                        else -> null
+                    } else null
+                    when {
+                        gateText != null -> Label(gateText, color = c.warn)
+                        targetNote != null -> Label(stringResource(R.string.target_prefix) + " " + NoteNames.label(targetNote, notation, accidentals).joined)
+                        else -> Label(stringResource(R.string.tap_to_pin))
+                    }
                 },
             )
             val noteBlock: @Composable (Modifier) -> Unit = { mod ->

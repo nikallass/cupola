@@ -73,7 +73,7 @@ class CalibrationViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun begin() {
         val s = graph.settingsState.value
-        running = CalibrationSession(engine.analyzer.hopSeconds, s.band)
+        running = CalibrationSession(engine.analyzer.hopSeconds, s.band, confidenceMin = 0.5) // the baseline needs voice, not a precise pitch
         _state.value = CalibrationUiState(step = CalibrationStep.SILENCE)
     }
 

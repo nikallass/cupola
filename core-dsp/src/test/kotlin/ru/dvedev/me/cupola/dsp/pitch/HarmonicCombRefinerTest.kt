@@ -38,6 +38,35 @@ class HarmonicCombRefinerTest {
     }
 
     @Test
+    fun `comb search finds the sung series when YIN is drowned by a second voice`() {
+        // two harmonic voices at once: YIN sees no single period; the search must return one of them (the louder)
+        val lead = Signals.harmonicVoice(VoiceSpec(PitchContour.Constant(196.0), tiltDbPerOctave = -9.0, amplitude = 0.25, normalise = false), 1.5, fs)
+        val other = Signals.harmonicVoice(VoiceSpec(PitchContour.Constant(261.6), tiltDbPerOctave = -9.0, amplitude = 0.12, normalise = false), 1.5, fs)
+        val frames = run(Signals.mix(lead, other))
+        val voiced = frames.filter { it.voiced }
+        assertTrue(voiced.size > frames.size * 0.7, "voiced ${voiced.size} of ${frames.size}")
+        val atLead = voiced.count { abs(cents(it.f0Hz, 196.0)) < 20 }
+        assertTrue(atLead > voiced.size * 0.8, "at 196 Hz: $atLead of ${voiced.size}, sample ${voiced.take(5).map { it.f0Hz }}")
+    }
+
+    @Test
+    fun `comb search returns nothing on white noise`() {
+        val analyzer = Analyzer(AnalyzerConfig(sampleRate = fs))
+        val input = Signals.mix(Signals.whiteNoise(2.5, fs, rms = 0.0005), Signals.concat(Signals.silence(1.0, fs), Signals.whiteNoise(1.5, fs, rms = 0.1, seed = 5)))
+        var searched = 0
+        var confident = 0
+        analyzer.push(input) { m, spectrum ->
+            if (m.timeSec > 1.5) {
+                searched++
+                val r = analyzer.combRefiner.search(spectrum, analyzer.noise)
+                if (r != null && r.confidence >= 0.7) confident++
+            }
+        }
+        assertTrue(searched > 50)
+        assertTrue(confident < searched * 0.05, "confident $confident of $searched")
+    }
+
+    @Test
     fun `rich low note keeps its fundamental and a pure sine keeps its pitch`() {
         for ((hz, spec) in listOf(
             82.41 to VoiceSpec(PitchContour.Constant(82.41), tiltDbPerOctave = -9.0, maxHarmonics = 40),

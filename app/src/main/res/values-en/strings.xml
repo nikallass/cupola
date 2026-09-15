@@ -178,4 +178,9 @@
     <string name="ob_next">Next</string>
     <string name="ob_calibrate_now">Calibrate now</string>
     <string name="ob_later">Later</string>
+    <string name="gate_not_calibrated">ring not counted: no calibration</string>
+    <string name="gate_pushed">ring not counted: louder than calibration</string>
+    <string name="gate_unstable">ring not counted: pitch drifts</string>
+    <string name="gate_low_confidence">ring not counted: no confident pitch</string>
+    <string name="gate_sovt">ring not counted: warm-up</string>
 </resources>

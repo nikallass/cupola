@@ -7,6 +7,7 @@ import ru.dvedev.me.cupola.audio.FrameListener
 import ru.dvedev.me.cupola.dsp.FrameMetrics
 import ru.dvedev.me.cupola.dsp.fft.PowerSpectrum
 import ru.dvedev.me.cupola.notation.Note
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** What the note zone shows: a note that is stable for the eye, not the raw 100 Hz estimate. */
@@ -27,6 +28,8 @@ data class DisplayNote(
     val overtones: Int = 0,
     /** True when the ring was being counted (all gates open) for most of the window. */
     val counted: Boolean = false,
+    /** The gate that blocked the ring most often in the window (OPEN when counted). */
+    val gate: ru.dvedev.me.cupola.dsp.score.Gate = ru.dvedev.me.cupola.dsp.score.Gate.OPEN,
 )
 
 /**
@@ -43,7 +46,9 @@ class NoteDisplaySmoother(
     /** A frame counts as a sung note only with this many audible harmonics (a lone orchestral tone has one). */
     private val minAudibleHarmonics: Int = 3,
     /** A different note must be the winner for this long before the display switches (hysteresis). */
-    private val switchSeconds: Double = 0.2,
+    private val switchSeconds: Double = 0.3,
+    /** When no single note holds this share of the voiced frames the window is "chaotic": keep the shown note. */
+    private val chaosShare: Double = 0.5,
     publishHz: Int = 20,
 ) : FrameListener {
     private val size = (windowSeconds / hopSeconds).roundToInt().coerceAtLeast(4)
@@ -67,6 +72,7 @@ class NoteDisplaySmoother(
     private var overtoneN = 0
     private var openFrames = 0
     private var voiceFrames = 0
+    private val gateCounts = IntArray(ru.dvedev.me.cupola.dsp.score.Gate.entries.size)
     private val emaAlpha = 1.0 - kotlin.math.exp(-hopSeconds / 0.3)
 
     override fun onFrame(metrics: FrameMetrics, spectrum: PowerSpectrum) {
@@ -79,7 +85,7 @@ class NoteDisplaySmoother(
         if (trusted) lastVoicedAt = metrics.timeSec
         if (metrics.voice) {
             voiceFrames++
-            if (metrics.gate == ru.dvedev.me.cupola.dsp.score.Gate.OPEN) openFrames++
+            if (metrics.gate == ru.dvedev.me.cupola.dsp.score.Gate.OPEN) openFrames++ else gateCounts[metrics.gate.ordinal]++
             val r = metrics.ringRatioNorm
             if (!r.isNaN()) ringEma = if (ringEma.isNaN()) r else ringEma + (r - ringEma) * emaAlpha
             shareEma = if (shareEma.isNaN()) metrics.ringSharePct else shareEma + (metrics.ringSharePct - shareEma) * emaAlpha
@@ -87,6 +93,12 @@ class NoteDisplaySmoother(
         if (trusted) { overtoneSum += metrics.overtoneCount; overtoneN++ }
         if (++frames % publishEvery != 0) return
         val counted = voiceFrames > 0 && openFrames * 2 >= voiceFrames
+        var blocking = ru.dvedev.me.cupola.dsp.score.Gate.OPEN
+        if (!counted) {
+            var bestN = 0
+            for (g in ru.dvedev.me.cupola.dsp.score.Gate.entries) if (gateCounts[g.ordinal] > bestN) { bestN = gateCounts[g.ordinal]; blocking = g }
+        }
+        gateCounts.fill(0)
         val overtones = if (overtoneN > 0) (overtoneSum.toDouble() / overtoneN).roundToInt() else 0
         voiceFrames = 0; openFrames = 0; overtoneSum = 0; overtoneN = 0
 
@@ -98,27 +110,52 @@ class NoteDisplaySmoother(
         val voicedFrames = counts.values.sum()
         val previous = _state.value
         if (voicedFrames >= minVoicedShare * size) {
-            var best = counts.maxByOrNull { it.value }!!.key
-            // hysteresis: keep the shown note while it still has support, unless the
-            // challenger has been winning for switchSeconds
-            val shown = if (previous.voiced) previous.note.midi else -1
-            if (shown >= 0 && best != shown && (counts[shown] ?: 0) > 0) {
-                if (candidate != best) { candidate = best; candidateSince = metrics.timeSec }
-                if (metrics.timeSec - candidateSince < switchSeconds) best = shown
-            } else {
-                candidate = -1
-            }
-            var sumC = 0.0
+            // the note is derived from the MEAN continuous pitch of the window, not from the
+            // per-frame mode: a vibrato that straddles a note boundary then sits on its centre
+            // instead of flipping left and right. Frames more than a semitone away from the
+            // modal note (detector slips) are left out of the mean.
+            var modal = counts.maxByOrNull { it.value }!!.key
+            val shownNote = if (previous.voiced) previous.note.midi else -1
+            // owner rule: a confidently shown note survives a burst of octave-hopping estimates —
+            // when no note dominates the window, average around the shown note instead
+            val chaotic = counts.getValue(modal) < chaosShare * voicedFrames
+            if (chaotic && shownNote >= 0) modal = shownNote
+            var sumP = 0.0
             var sumF = 0.0
             var n = 0
             for (i in 0 until filled) {
-                if (midi[i] == best) { sumC += cents[i]; sumF += f0[i]; n++ }
+                if (midi[i] < 0) continue
+                val p = midi[i] + cents[i] / 100.0
+                if (abs(p - modal) <= 1.0) { sumP += p; sumF += f0[i]; n++ }
             }
-            _state.value = DisplayNote(voiced = true, note = Note(best), cents = sumC / n, f0Hz = sumF / n, holding = false, ringNormDb = ringEma, ringSharePct = shareEma, overtones = overtones, counted = counted)
+            if (n == 0 || (chaotic && shownNote >= 0 && n < minVoicedShare * size)) {
+                if (previous.voiced && !previous.holding) _state.value = previous.copy(holding = true)
+                return
+            }
+            val meanP = sumP / n
+            var best = meanP.roundToInt()
+            // hysteresis: keep the shown note while it still has support, unless the
+            // challenger has been winning for switchSeconds
+            val shown = if (previous.voiced) previous.note.midi else -1
+            if (shown >= 0 && best != shown) {
+                if (candidate != best) { candidate = best; candidateSince = metrics.timeSec }
+                if (metrics.timeSec - candidateSince < switchSeconds || chaotic) {
+                    // keep the shown note; if the mean has drifted past a semitone from it, hold the old readout untouched
+                    if (abs(meanP - shown) >= 0.75) {
+                        if (!previous.holding) _state.value = previous.copy(holding = true)
+                        return
+                    }
+                    best = shown
+                }
+            } else {
+                candidate = -1
+            }
+            val centsOut = ((meanP - best) * 100.0).coerceIn(-75.0, 75.0)
+            _state.value = DisplayNote(voiced = true, note = Note(best), cents = centsOut, f0Hz = sumF / n, holding = false, ringNormDb = ringEma, ringSharePct = shareEma, overtones = overtones, counted = counted, gate = blocking)
         } else if (previous.voiced && metrics.timeSec - lastVoicedAt < holdSeconds) {
-            _state.value = previous.copy(holding = true, ringNormDb = ringEma, ringSharePct = shareEma, counted = counted)
+            _state.value = previous.copy(holding = true, ringNormDb = ringEma, ringSharePct = shareEma, counted = counted, gate = blocking)
         } else {
-            _state.value = DisplayNote(ringNormDb = if (metrics.voice) ringEma else Double.NaN, ringSharePct = if (metrics.voice) shareEma else Double.NaN, counted = counted)
+            _state.value = DisplayNote(ringNormDb = if (metrics.voice) ringEma else Double.NaN, ringSharePct = if (metrics.voice) shareEma else Double.NaN, counted = counted, gate = blocking)
         }
     }
 
