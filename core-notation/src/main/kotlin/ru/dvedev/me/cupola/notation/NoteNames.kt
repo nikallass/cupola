@@ -67,6 +67,25 @@ object NoteNames {
     }
 
     /**
+     * Shortest Russian form for the headline (Helmholtz-style case and digits): «Ля¹»
+     * (первая), «ля» (малая, lowercase), «Ля» (большая), «Ля₁» (контроктава), «Ля₂»
+     * (субконтроктава). Always shown next to the scientific name, which resolves the case.
+     */
+    fun ruShort(note: Note, accidentals: Accidentals = Accidentals.SHARPS): String {
+        val base = ruBase(note, accidentals)
+        val sign = ruSign(note, accidentals)
+        val cap = base.replaceFirstChar { it.uppercase() }
+        return when (val octave = note.octave) {
+            in RU_SUPERSCRIPT -> cap + sign + RU_SUPERSCRIPT.getValue(octave)
+            3 -> base + sign
+            2 -> cap + sign
+            1 -> cap + sign + "₁"
+            0 -> cap + sign + "₂"
+            else -> "$cap$sign $octave"
+        }
+    }
+
+    /**
      * Full spoken Russian name for accessibility: «ля первой октавы», «ля-диез первой
      * октавы», «си-бемоль малой октавы».
      */

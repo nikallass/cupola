@@ -6,6 +6,7 @@ import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -28,17 +29,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.dvedev.me.cupola.analysis.AnalysisViewModel
+import ru.dvedev.me.cupola.ui.analysis.AnalysisScreen
 import ru.dvedev.me.cupola.ui.components.PillButton
 import ru.dvedev.me.cupola.ui.components.PillStyle
-import ru.dvedev.me.cupola.ui.debug.LiveReadout
 import ru.dvedev.me.cupola.ui.preview.TokensPreviewScreen
 import ru.dvedev.me.cupola.ui.theme.CupolaTheme
 import ru.dvedev.me.cupola.ui.theme.ThemeMode
@@ -68,9 +70,11 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private enum class Screen { ANALYSIS, SETTINGS }
+
 @Composable
 private fun Root(mode: ThemeMode, onModeChange: (ThemeMode) -> Unit) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val vm: AnalysisViewModel = viewModel { AnalysisViewModel(context.appGraph.engine) }
     var granted by rememberSaveable {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
@@ -93,26 +97,25 @@ private fun Root(mode: ThemeMode, onModeChange: (ThemeMode) -> Unit) {
     }
 
     val c = CupolaTheme.colors
-    var showTokens by rememberSaveable { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().background(c.panel).statusBarsPadding().verticalScroll(rememberScrollState())) {
-        if (!granted) {
-            Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Куполу нужен микрофон, чтобы слышать голос. Звук не покидает устройство.", style = CupolaTheme.type.body, color = c.mut)
-                    PillButton("Разрешить микрофон", onClick = { requestPermission.launch(Manifest.permission.RECORD_AUDIO) }, style = PillStyle.Primary, modifier = Modifier.padding(top = 16.dp))
-                }
+    var screen by rememberSaveable { mutableStateOf(Screen.ANALYSIS) }
+    if (!granted) {
+        Box(Modifier.fillMaxSize().background(c.panel).statusBarsPadding().padding(24.dp), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(stringResource(R.string.mic_rationale), style = CupolaTheme.type.body, color = c.mut)
+                PillButton(stringResource(R.string.mic_allow), onClick = { requestPermission.launch(Manifest.permission.RECORD_AUDIO) }, style = PillStyle.Primary, modifier = Modifier.padding(top = 16.dp))
             }
-        } else {
-            val metrics by vm.metrics.collectAsStateWithLifecycle()
-            val engineState by vm.engineState.collectAsStateWithLifecycle()
-            LiveReadout(metrics, engineState, vm.overruns, vm.readErrors, vm.processingLatencyMs)
-            PillButton(
-                if (showTokens) "Скрыть токены" else "Показать токены",
-                onClick = { showTokens = !showTokens },
-                style = PillStyle.Outline,
-                modifier = Modifier.padding(14.dp),
-            )
-            if (showTokens) TokensPreviewScreen(mode = mode, onModeChange = onModeChange)
+        }
+        return
+    }
+    when (screen) {
+        Screen.ANALYSIS -> AnalysisScreen(vm, onSettings = { screen = Screen.SETTINGS }, onCalibrate = { /* T-061 */ })
+        Screen.SETTINGS -> {
+            // Placeholder until T-060: the token gallery doubles as the theme switch.
+            BackHandler { screen = Screen.ANALYSIS }
+            Column(Modifier.fillMaxSize().background(c.panel).statusBarsPadding().verticalScroll(rememberScrollState())) {
+                PillButton("← Анализ", onClick = { screen = Screen.ANALYSIS }, style = PillStyle.Outline, modifier = Modifier.padding(14.dp))
+                TokensPreviewScreen(mode = mode, onModeChange = onModeChange)
+            }
         }
     }
 }

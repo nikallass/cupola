@@ -1,0 +1,49 @@
+package ru.dvedev.me.cupola.analysis
+
+import ru.dvedev.me.cupola.audio.FrameListener
+import ru.dvedev.me.cupola.dsp.FrameMetrics
+import ru.dvedev.me.cupola.dsp.fft.PowerSpectrum
+import ru.dvedev.me.cupola.dsp.metrics.Harmonic
+import ru.dvedev.me.cupola.dsp.metrics.NoiseFloor
+
+/**
+ * Latest spectrum for the spectrum zone (T-054): dB per bin, harmonics, noise profile.
+ * Double-buffered so the UI thread never reads a half-written frame.
+ */
+class SpectrumSnapshot(private val noise: () -> NoiseFloor?) : FrameListener {
+    class Frame(bins: Int) {
+        val db = FloatArray(bins)
+        val floorDb = FloatArray(bins)
+        var binHz = 0.0
+        var harmonics: List<Harmonic> = emptyList()
+        var f0Hz = 0.0
+        var voiced = false
+        var timeSec = 0.0
+    }
+
+    private var buffers: Array<Frame>? = null
+    @Volatile private var current = 0
+
+    /** Newest complete frame, or null before the first one. */
+    val latest: Frame? get() = buffers?.get(current)
+
+    override fun onFrame(metrics: FrameMetrics, spectrum: PowerSpectrum) {
+        var b = buffers
+        if (b == null || b[0].db.size != spectrum.bins) {
+            b = arrayOf(Frame(spectrum.bins), Frame(spectrum.bins))
+            buffers = b
+        }
+        val next = 1 - current
+        val f = b[next]
+        val db = spectrum.db
+        for (k in db.indices) f.db[k] = db[k].toFloat()
+        val n = noise()
+        if (n != null) for (k in db.indices) f.floorDb[k] = n.profileDb[k].toFloat()
+        f.binHz = spectrum.binHz
+        f.harmonics = metrics.harmonics
+        f.f0Hz = metrics.f0Hz
+        f.voiced = metrics.voiced
+        f.timeSec = metrics.timeSec
+        current = next
+    }
+}

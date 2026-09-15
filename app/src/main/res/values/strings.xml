@@ -1,4 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Купол</string>
+
+    <!-- top bar -->
+    <string name="action_start">Старт</string>
+    <string name="action_stop">Стоп</string>
+    <string name="action_pause">Пауза</string>
+    <string name="action_resume">Дальше</string>
+    <string name="action_settings">Настройки</string>
+
+    <!-- voice types -->
+    <string name="voice_bass">бас</string>
+    <string name="voice_baritone">баритон</string>
+    <string name="voice_tenor">тенор</string>
+    <string name="voice_alto">контральто / меццо</string>
+    <string name="voice_soprano">сопрано</string>
+    <string name="voice_unset">не задан</string>
+
+    <!-- zones -->
+    <string name="zone_note">нота</string>
+    <string name="zone_spectrogram">спектрограмма</string>
+    <string name="zone_spectrum">спектр</string>
+    <string name="badge_live">живой</string>
+    <string name="badge_target">цель</string>
+    <string name="badge_paused">пауза</string>
+    <string name="badge_8s">8 с</string>
+    <string name="badge_db">dB</string>
+    <string name="tap_to_pin">тап — закрепить ноту</string>
+    <string name="target_prefix">цель</string>
+    <string name="cupola">купол</string>
+    <string name="cupola_vs_baseline">купол %1$s dB к калибровке</string>
+    <string name="no_calibration">нет калибровки</string>
+    <string name="spectrogram_axis_hint">лог 80 Гц – 8 кГц</string>
+    <string name="sub_silence">тишина</string>
+    <string name="unit_khz">кГц</string>
+    <string name="unit_hz">Гц</string>
+    <string name="overtones_n">обертонов %1$d</string>
+    <string name="vibrato_fmt">вибрато %1$.1f Гц ±%2$.0f ¢</string>
+    <string name="vibrato_wobble">качание</string>
+    <string name="vibrato_tremolo">тремоло</string>
+    <string name="vibrato_straight">прямой тон</string>
+
+    <!-- permission -->
+    <string name="mic_rationale">Куполу нужен микрофон, чтобы слышать голос. Звук не покидает устройство.</string>
+    <string name="mic_allow">Разрешить микрофон</string>
+
+    <!-- hints (SPEC §7a) -->
+    <string name="hint_pushed">Громче ≠ звонче. Тише.</string>
+    <string name="hint_drift">Нота плывёт. Сначала стабильность.</string>
+    <string name="hint_good">В позиции. Не добавляй.</string>
 </resources>

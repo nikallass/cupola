@@ -38,6 +38,18 @@ class NoteNamesTest {
     }
 
     @Test
+    fun `short Helmholtz-style names for the headline`() {
+        assertEquals("Ля¹", NoteNames.ruShort(Note.A4))
+        assertEquals("До²", NoteNames.ruShort(Note.of(PitchClass.C, 5)))
+        assertEquals("ля", NoteNames.ruShort(Note.of(PitchClass.A, 3)))
+        assertEquals("Ля", NoteNames.ruShort(Note.of(PitchClass.A, 2)))
+        assertEquals("Ля₁", NoteNames.ruShort(Note.of(PitchClass.A, 1)))
+        assertEquals("До₂", NoteNames.ruShort(Note.of(PitchClass.C, 0)))
+        assertEquals("фа♯", NoteNames.ruShort(Note.of(PitchClass.FS, 3)))
+        assertEquals("Соль♭¹", NoteNames.ruShort(Note.of(PitchClass.FS, 4), Accidentals.FLATS))
+    }
+
+    @Test
     fun `accidentals spelling`() {
         val cs4 = Note.of(PitchClass.CS, 4)
         assertEquals("C♯4", NoteNames.en(cs4))
