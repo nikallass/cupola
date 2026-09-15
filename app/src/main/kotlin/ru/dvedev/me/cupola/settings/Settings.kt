@@ -1,0 +1,66 @@
+package ru.dvedev.me.cupola.settings
+
+import ru.dvedev.me.cupola.audio.AudioSourcePreference
+import ru.dvedev.me.cupola.dsp.metrics.RingBand
+import ru.dvedev.me.cupola.dsp.metrics.RingMetrics
+import ru.dvedev.me.cupola.dsp.metrics.VoiceType
+import ru.dvedev.me.cupola.dsp.score.ScoreParams
+import ru.dvedev.me.cupola.dsp.score.ScoreWeights
+import ru.dvedev.me.cupola.notation.Accidentals
+import ru.dvedev.me.cupola.notation.NotationMode
+import ru.dvedev.me.cupola.notation.Tuning
+import ru.dvedev.me.cupola.ui.theme.ThemeMode
+
+enum class Language { SYSTEM, RU, EN }
+
+/** All user settings (SPEC §15.5). Persisted by [SettingsRepository]. */
+data class Settings(
+    val voiceType: VoiceType = VoiceType.UNSET,
+    /** Custom cupola band; used instead of [voiceType]'s band when [useCustomBand]. */
+    val customLoHz: Int = 2400,
+    val customHiHz: Int = 3200,
+    val useCustomBand: Boolean = false,
+    val a4Hz: Int = Tuning.DEFAULT_A4_HZ.toInt(),
+    val notation: NotationMode = NotationMode.BOTH,
+    val accidentals: Accidentals = Accidentals.SHARPS,
+    val language: Language = Language.SYSTEM,
+    val theme: ThemeMode = ThemeMode.SYSTEM,
+    val logFrequencyAxis: Boolean = true,
+    val fftSize: Int = 2048,
+    val audioSource: AudioSourcePreference = AudioSourcePreference.AUTO,
+    /** Null = device default (phones on, tablets off). */
+    val haptics: Boolean? = null,
+    val pointsAnimation: Boolean = true,
+    val hints: Boolean = true,
+    // advanced
+    val centsOk: Int = 10,
+    val centsWarn: Int = 25,
+    val confidenceMin: Double = 0.7,
+    val splK: Double = RingMetrics.DEFAULT_K,
+    val ringWeight: Double = ScoreWeights.RING,
+    val pitchWeight: Double = ScoreWeights.PITCH,
+    val steadyWeight: Double = ScoreWeights.STEADY,
+    val onboardingDone: Boolean = false,
+) {
+    val band: RingBand
+        get() = if (useCustomBand) RingBand(customLoHz.toDouble(), customHiHz.toDouble()) else voiceType.band
+
+    /** Calibrations are stored per voice type or per custom band (SPEC §15.5). */
+    val calibrationKey: String
+        get() = if (useCustomBand) "band:$customLoHz-$customHiHz" else "voice:${voiceType.name}"
+
+    fun scoreParams(): ScoreParams = ScoreParams(
+        ringWeight = ringWeight,
+        pitchWeight = pitchWeight,
+        steadyWeight = steadyWeight,
+        confidenceMin = confidenceMin,
+    )
+
+    companion object {
+        val FFT_SIZES = listOf(2048, 4096)
+        const val CUSTOM_MIN_HZ = 1500
+        const val CUSTOM_MAX_HZ = 5000
+        const val CUSTOM_STEP_HZ = 50
+        const val CUSTOM_MIN_WIDTH_HZ = 200
+    }
+}

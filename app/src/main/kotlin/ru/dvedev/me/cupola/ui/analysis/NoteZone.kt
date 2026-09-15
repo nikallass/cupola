@@ -34,6 +34,8 @@ import ru.dvedev.me.cupola.analysis.HintKey
 import ru.dvedev.me.cupola.analysis.SessionUiState
 import ru.dvedev.me.cupola.dsp.FrameMetrics
 import ru.dvedev.me.cupola.dsp.metrics.VibratoKind
+import ru.dvedev.me.cupola.notation.Accidentals
+import ru.dvedev.me.cupola.notation.NotationMode
 import ru.dvedev.me.cupola.notation.Note
 import ru.dvedev.me.cupola.notation.NoteNames
 import ru.dvedev.me.cupola.ui.components.Badge
@@ -56,6 +58,9 @@ fun NoteZone(
     session: SessionUiState,
     targetNote: Note?,
     baselineDb: Double?,
+    notation: NotationMode,
+    accidentals: Accidentals,
+    hintsEnabled: Boolean,
     onTapNote: (Note?) -> Unit,
     onLongPressArc: () -> Unit,
     modifier: Modifier = Modifier,
@@ -83,7 +88,7 @@ fun NoteZone(
                 },
                 right = {
                     Label(
-                        if (targetNote != null) stringResource(R.string.target_prefix) + " " + NoteNames.label(targetNote).joined
+                        if (targetNote != null) stringResource(R.string.target_prefix) + " " + NoteNames.label(targetNote, notation, accidentals).joined
                         else stringResource(R.string.tap_to_pin),
                     )
                 },
@@ -93,25 +98,33 @@ fun NoteZone(
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.Bottom,
-                        itemVerticalAlignment = Alignment.Bottom,
                     ) {
+                        // headline: RU short name, or the scientific name when notation = EN
+                        val headline = when {
+                            !voiced -> "—"
+                            notation == NotationMode.EN -> NoteNames.en(m!!.note, accidentals)
+                            else -> NoteNames.ruShort(m!!.note, accidentals)
+                        }
                         Text(
-                            if (voiced) NoteNames.ruShort(m!!.note) else "—",
+                            headline,
                             style = if (compact) t.note.copy(fontSize = 66.sp) else t.note,
                             color = c.ink,
                             maxLines = 1,
                             overflow = TextOverflow.Clip,
+                            modifier = Modifier.align(Alignment.Bottom),
                         )
                         if (voiced) {
-                            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text(NoteNames.en(m!!.note), style = t.noteEn, color = c.dim, modifier = Modifier.padding(bottom = 6.dp))
-                                Text(NoteNames.cents(m.cents), style = t.cents, color = centsColor(m.cents), modifier = Modifier.padding(bottom = 6.dp))
+                            Row(Modifier.align(Alignment.Bottom), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                if (notation == NotationMode.BOTH) {
+                                    Text(NoteNames.en(m!!.note, accidentals), style = t.noteEn, color = c.dim, modifier = Modifier.padding(bottom = 6.dp))
+                                }
+                                Text(NoteNames.cents(m!!.cents), style = t.cents, color = centsColor(m.cents), modifier = Modifier.padding(bottom = 6.dp))
                             }
                         }
                     }
                     CentsScale(cents = if (voiced) m!!.cents else Double.NaN, Modifier.fillMaxWidth().height(24.dp).padding(top = 4.dp))
                     Spacer(Modifier.height(6.dp))
-                    Text(subLine(m, targetNote), style = t.sub, color = c.dim, maxLines = if (compact) 2 else 1, overflow = TextOverflow.Ellipsis)
+                    Text(subLine(m, targetNote, notation, accidentals), style = t.sub, color = c.dim, maxLines = if (compact) 2 else 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             if (compact) {
@@ -130,13 +143,13 @@ fun NoteZone(
                     CupolaArc(ring = m?.ring ?: 0.0, valueText = arcValue, modifier = arcModifier.width(150.dp))
                 }
             }
-            HintRow(session.hint, Modifier.padding(horizontal = CupolaDimens.paddingH).padding(bottom = 6.dp))
+            HintRow(if (hintsEnabled) session.hint else null, Modifier.padding(horizontal = CupolaDimens.paddingH).padding(bottom = 6.dp))
         }
     }
 }
 
 @Composable
-private fun subLine(m: FrameMetrics?, target: Note?): String {
+private fun subLine(m: FrameMetrics?, target: Note?, notation: NotationMode, accidentals: Accidentals): String {
     if (m == null || !m.voiced) return stringResource(R.string.sub_silence)
     val parts = mutableListOf<String>()
     parts += formatHz(m.f0Hz) + " " + stringResource(R.string.unit_hz)
@@ -149,7 +162,7 @@ private fun subLine(m: FrameMetrics?, target: Note?): String {
         VibratoKind.STRAIGHT -> stringResource(R.string.vibrato_straight)
         VibratoKind.NONE -> "…"
     }
-    if (target != null) parts += stringResource(R.string.target_prefix) + " " + NoteNames.ruShort(target)
+    if (target != null) parts += stringResource(R.string.target_prefix) + " " + (if (notation == NotationMode.EN) NoteNames.en(target, accidentals) else NoteNames.ruShort(target, accidentals))
     return parts.joinToString(" · ")
 }
 

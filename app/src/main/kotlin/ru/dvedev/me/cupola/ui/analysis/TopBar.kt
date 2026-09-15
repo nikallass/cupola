@@ -24,6 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ru.dvedev.me.cupola.R
 import ru.dvedev.me.cupola.analysis.SessionUiState
+import ru.dvedev.me.cupola.dsp.metrics.RingBand
 import ru.dvedev.me.cupola.dsp.metrics.VoiceType
 import ru.dvedev.me.cupola.ui.components.Label
 import ru.dvedev.me.cupola.ui.components.PillButton
@@ -48,6 +49,8 @@ fun voiceTypeName(type: VoiceType): String = stringResource(
 @Composable
 fun TopBar(
     voiceType: VoiceType,
+    band: RingBand,
+    customBand: Boolean,
     session: SessionUiState,
     onStartStop: () -> Unit,
     onPause: () -> Unit,
@@ -56,7 +59,6 @@ fun TopBar(
 ) {
     val c = CupolaTheme.colors
     val t = CupolaTheme.type
-    val band = voiceType.band
     Row(
         Modifier
             .fillMaxWidth()
@@ -67,7 +69,7 @@ fun TopBar(
         Label(stringResource(R.string.app_name), color = c.ink)
         if (!compact) {
             Label(" · ")
-            Label(voiceTypeName(voiceType))
+            Label(if (customBand) stringResource(R.string.voice_custom) else voiceTypeName(voiceType))
             Label(" · ")
             Label("%.1f–%.1f ".format(band.loHz / 1000, band.hiHz / 1000) + stringResource(R.string.unit_khz))
         }

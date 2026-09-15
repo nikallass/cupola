@@ -10,57 +10,71 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
-import ru.dvedev.me.cupola.audio.AudioEngine
-import ru.dvedev.me.cupola.audio.AudioSourcePreference
+import ru.dvedev.me.cupola.AppGraph
 import ru.dvedev.me.cupola.audio.EngineState
 import ru.dvedev.me.cupola.dsp.FrameMetrics
-import ru.dvedev.me.cupola.dsp.metrics.VoiceType
+import ru.dvedev.me.cupola.dsp.calibration.Calibration
 import ru.dvedev.me.cupola.dsp.session.SessionSummary
 import ru.dvedev.me.cupola.notation.Note
+import ru.dvedev.me.cupola.settings.Settings
 
 /**
  * State holder of the Analysis screen. Analysis runs whenever the app is visible
- * (SPEC §15.5); a session (points, hints) is opened with «Старт».
+ * (SPEC §15.5); a session (points, hints) is opened with «Старт» and needs a calibration.
  */
 @OptIn(FlowPreview::class)
-class AnalysisViewModel(private val engine: AudioEngine) : ViewModel() {
+class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
+    private val engine = graph.engine
     val engineState: StateFlow<EngineState> = engine.state
+    val settings: StateFlow<Settings> = graph.settingsState
+    val calibration: StateFlow<Calibration?> = graph.calibrationState
+    val session: SessionController = graph.session
 
     /** Text readouts recompose at ~25 Hz; canvases pull from the histories every display frame. */
     val uiMetrics: StateFlow<FrameMetrics?> = engine.metrics.sample(40).stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val spectrogram = SpectrogramHistory(hopSeconds = engine.analyzer.hopSeconds)
     val spectrum = SpectrumSnapshot { engine.analyzer.noise }
-    val session = SessionController(engine.analyzer.hopSeconds)
 
     /** Pinned target note (tap on the note zone), or null. */
     var targetNote: Note? by mutableStateOf(null)
         private set
 
-    var voiceType: VoiceType by mutableStateOf(VoiceType.UNSET)
+    /** «Старт» pressed without a calibration: the screen offers to calibrate. */
+    var calibrationPrompt: Boolean by mutableStateOf(false)
         private set
-
-    var sourcePreference: AudioSourcePreference = AudioSourcePreference.AUTO
 
     init {
         engine.addListener(spectrogram)
         engine.addListener(spectrum)
-        engine.addListener(session)
     }
 
     fun startListening() {
-        engine.start(sourcePreference)
+        engine.start(settings.value.audioSource)
     }
 
-    fun stopListening() {
-        engine.stop()
+    /** Called on ON_STOP; the microphone keeps running only inside a session (T-042). */
+    fun stopListeningIfIdle() {
+        if (!session.isActive) engine.stop()
     }
 
     fun toggleTarget(current: Note?) {
         targetNote = if (targetNote == null) current else null
     }
 
-    fun startSession() = session.start()
+    /** Returns false when a calibration is required first. */
+    fun startSession(): Boolean {
+        if (calibration.value == null) {
+            calibrationPrompt = true
+            return false
+        }
+        session.start()
+        return true
+    }
+
+    fun dismissCalibrationPrompt() {
+        calibrationPrompt = false
+    }
 
     fun stopSession(): SessionSummary? = session.stop()
 
@@ -68,18 +82,11 @@ class AnalysisViewModel(private val engine: AudioEngine) : ViewModel() {
 
     fun dismissSummary() = session.dismissSummary()
 
-    fun setVoice(type: VoiceType) {
-        voiceType = type
-        engine.updateConfig { it.copy(band = type.band) }
-    }
-
-    val calibrationBaselineDb: Double? get() = engine.config.calibration?.ringRatioDb
     val overruns: Long get() = engine.overruns
     val processingLatencyMs: Double get() = engine.processingLatencyMs
 
     override fun onCleared() {
         engine.removeListener(spectrogram)
         engine.removeListener(spectrum)
-        engine.removeListener(session)
     }
 }

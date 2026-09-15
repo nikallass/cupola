@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import ru.dvedev.me.cupola.R
@@ -106,14 +105,14 @@ fun SpectrumZone(
                 drawLine(c.line, Offset(gutterL, y), Offset(gutterL + plotW, y), strokeWidth = 1f)
                 val label = db.toString()
                 val m = measurer.measure(label, axisStyle)
-                drawText(measurer, label, Offset(gutterL - 6.dp.toPx() - m.size.width, y - m.size.height / 2), axisStyle.copy(color = c.dim))
+                drawLabel(measurer, label, Offset(gutterL - 6.dp.toPx() - m.size.width, y - m.size.height / 2), axisStyle.copy(color = c.dim))
             }
             for (hz in listOf(100, 200, 400, 800, 1600, 3200, 6400)) {
                 val x = xOf(hz.toDouble())
                 drawLine(c.line, Offset(x, gutterT + plotH), Offset(x, gutterT + plotH + 3.dp.toPx()), strokeWidth = 1f)
                 val label = formatKHz(hz)
                 val m = measurer.measure(label, axisStyle)
-                drawText(measurer, label, Offset(x - m.size.width / 2, gutterT + plotH + 3.dp.toPx()), axisStyle.copy(color = c.dim))
+                drawLabel(measurer, label, Offset(x - m.size.width / 2, gutterT + plotH + 3.dp.toPx()), axisStyle.copy(color = c.dim))
             }
             // cupola band
             val bx0 = xOf(band.loHz)
@@ -190,7 +189,7 @@ fun SpectrumZone(
                         val m = measurer.measure(label, axisStyle)
                         val left = x - m.size.width / 2
                         if (left - lastLabelRight >= gap) {
-                            drawText(measurer, label, Offset(left, (y - 8.dp.toPx() - m.size.height).coerceAtLeast(gutterT)), axisStyle.copy(color = c.mut))
+                            drawLabel(measurer, label, Offset(left, (y - 8.dp.toPx() - m.size.height).coerceAtLeast(gutterT)), axisStyle.copy(color = c.mut))
                             lastLabelRight = left + m.size.width
                         }
                     }

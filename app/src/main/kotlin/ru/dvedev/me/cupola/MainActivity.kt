@@ -1,6 +1,7 @@
 package ru.dvedev.me.cupola
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
 import android.os.Bundle
@@ -16,11 +17,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,26 +38,37 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.dvedev.me.cupola.analysis.AnalysisViewModel
+import ru.dvedev.me.cupola.calibration.CalibrationViewModel
+import ru.dvedev.me.cupola.settings.applyLanguage
 import ru.dvedev.me.cupola.ui.analysis.AnalysisScreen
+import ru.dvedev.me.cupola.ui.analysis.CentsThresholds
+import ru.dvedev.me.cupola.ui.analysis.LocalCentsThresholds
+import ru.dvedev.me.cupola.ui.calibration.CalibrationScreen
 import ru.dvedev.me.cupola.ui.components.PillButton
 import ru.dvedev.me.cupola.ui.components.PillStyle
 import ru.dvedev.me.cupola.ui.preview.TokensPreviewScreen
+import ru.dvedev.me.cupola.ui.settings.SettingsScreen
 import ru.dvedev.me.cupola.ui.theme.CupolaTheme
-import ru.dvedev.me.cupola.ui.theme.ThemeMode
 import ru.dvedev.me.cupola.ui.theme.resolvesToDark
 
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(applyLanguage(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Theme mode lives in memory until settings land in T-060 (DataStore).
-            var mode by rememberSaveable { mutableStateOf(ThemeMode.SYSTEM) }
-            val dark = mode.resolvesToDark()
+            val settings by appGraph.settingsState.collectAsStateWithLifecycle()
+            val dark = settings.theme.resolvesToDark()
             LaunchedEffect(dark) { applySystemBars(dark) }
             CupolaTheme(dark = dark) {
-                Root(mode = mode, onModeChange = { mode = it })
+                CompositionLocalProvider(LocalCentsThresholds provides CentsThresholds(settings.centsOk.toDouble(), settings.centsWarn.toDouble())) {
+                    Root(onLanguageChanged = { recreate() })
+                }
             }
         }
     }
@@ -70,24 +83,26 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { ANALYSIS, SETTINGS }
+private enum class Screen { ANALYSIS, SETTINGS, CALIBRATION, TOKENS }
 
 @Composable
-private fun Root(mode: ThemeMode, onModeChange: (ThemeMode) -> Unit) {
+private fun Root(onLanguageChanged: () -> Unit) {
     val context = LocalContext.current
-    val vm: AnalysisViewModel = viewModel { AnalysisViewModel(context.appGraph.engine) }
+    val graph = context.appGraph
+    val vm: AnalysisViewModel = viewModel { AnalysisViewModel(graph) }
+    val settings by graph.settingsState.collectAsStateWithLifecycle()
     var granted by rememberSaveable {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
     }
     val requestPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
 
-    // Analysis runs while the app is visible (SPEC §15.5); the session case is T-042.
+    // Analysis runs while the app is visible (SPEC §15.5); in a session the service keeps it (T-042).
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, granted) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> if (granted) vm.startListening()
-                Lifecycle.Event.ON_STOP -> vm.stopListening()
+                Lifecycle.Event.ON_STOP -> vm.stopListeningIfIdle()
                 else -> Unit
             }
         }
@@ -98,8 +113,9 @@ private fun Root(mode: ThemeMode, onModeChange: (ThemeMode) -> Unit) {
 
     val c = CupolaTheme.colors
     var screen by rememberSaveable { mutableStateOf(Screen.ANALYSIS) }
+    var returnTo by rememberSaveable { mutableStateOf(Screen.ANALYSIS) }
     if (!granted) {
-        Box(Modifier.fillMaxSize().background(c.panel).statusBarsPadding().padding(24.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().background(c.panel).systemBarsPadding().padding(24.dp), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(stringResource(R.string.mic_rationale), style = CupolaTheme.type.body, color = c.mut)
                 PillButton(stringResource(R.string.mic_allow), onClick = { requestPermission.launch(Manifest.permission.RECORD_AUDIO) }, style = PillStyle.Primary, modifier = Modifier.padding(top = 16.dp))
@@ -107,14 +123,32 @@ private fun Root(mode: ThemeMode, onModeChange: (ThemeMode) -> Unit) {
         }
         return
     }
+    fun openCalibration(from: Screen) {
+        returnTo = from
+        screen = Screen.CALIBRATION
+    }
     when (screen) {
-        Screen.ANALYSIS -> AnalysisScreen(vm, onSettings = { screen = Screen.SETTINGS }, onCalibrate = { /* T-061 */ })
+        Screen.ANALYSIS -> AnalysisScreen(vm, onSettings = { screen = Screen.SETTINGS }, onCalibrate = { openCalibration(Screen.ANALYSIS) })
         Screen.SETTINGS -> {
-            // Placeholder until T-060: the token gallery doubles as the theme switch.
             BackHandler { screen = Screen.ANALYSIS }
-            Column(Modifier.fillMaxSize().background(c.panel).statusBarsPadding().verticalScroll(rememberScrollState())) {
-                PillButton("← Анализ", onClick = { screen = Screen.ANALYSIS }, style = PillStyle.Outline, modifier = Modifier.padding(14.dp))
-                TokensPreviewScreen(mode = mode, onModeChange = onModeChange)
+            SettingsScreen(
+                graph,
+                onBack = { screen = Screen.ANALYSIS },
+                onCalibrate = { openCalibration(Screen.SETTINGS) },
+                onTokens = { screen = Screen.TOKENS },
+                onLanguageChanged = onLanguageChanged,
+            )
+        }
+        Screen.CALIBRATION -> {
+            val cvm: CalibrationViewModel = viewModel { CalibrationViewModel(graph) }
+            BackHandler { cvm.restart(); screen = returnTo }
+            CalibrationScreen(cvm, band = settings.band, onDone = { cvm.restart(); screen = returnTo }, onBack = { screen = returnTo })
+        }
+        Screen.TOKENS -> {
+            BackHandler { screen = Screen.SETTINGS }
+            Column(Modifier.fillMaxSize().background(c.panel).systemBarsPadding().verticalScroll(rememberScrollState())) {
+                PillButton(stringResource(R.string.action_back), onClick = { screen = Screen.SETTINGS }, style = PillStyle.Outline, modifier = Modifier.padding(14.dp))
+                TokensPreviewScreen(mode = settings.theme, onModeChange = { })
             }
         }
     }

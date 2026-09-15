@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -64,6 +63,7 @@ fun SpectrogramZone(
     val axisStyle = CupolaTheme.type.axis
     val renderer = remember(history, colormap) { SpectrogramRenderer(history, colormap) }
     val bandLabel = stringResource(R.string.cupola)
+    val thresholds = LocalCentsThresholds.current
 
     val tick = remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) {
@@ -118,7 +118,7 @@ fun SpectrogramZone(
                     val dash = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx()))
                     drawLine(c.gold, Offset(gutterL, yHi), Offset(gutterL + plotW, yHi), strokeWidth = 1f, pathEffect = dash)
                     drawLine(c.gold, Offset(gutterL, yLo), Offset(gutterL + plotW, yLo), strokeWidth = 1f, pathEffect = dash)
-                    drawText(measurer, bandLabel, Offset(gutterL + 6.dp.toPx(), yHi - 12.dp.toPx()), axisStyle.copy(color = c.goldInk))
+                    drawLabel(measurer, bandLabel, Offset(gutterL + 6.dp.toPx(), yHi - 12.dp.toPx()), axisStyle.copy(color = c.goldInk))
 
                     // target line + harmonics
                     if (targetNote != null) {
@@ -132,7 +132,7 @@ fun SpectrogramZone(
                         }
                     }
                     // f0 trace
-                    drawTrace(history, end, gutterL, colW, plotH, c)
+                    drawTrace(history, end, gutterL, colW, plotH, c, thresholds)
                 }
                 // frequency axis
                 for (hz in listOf(100, 200, 400, 800, 1600, 3200, 6400)) {
@@ -140,7 +140,7 @@ fun SpectrogramZone(
                     drawLine(c.line, Offset(gutterL - 3.dp.toPx(), y), Offset(gutterL, y), strokeWidth = 1f)
                     val label = formatKHz(hz)
                     val m = measurer.measure(label, axisStyle)
-                    drawText(measurer, label, Offset(gutterL - 6.dp.toPx() - m.size.width, y - m.size.height / 2), axisStyle.copy(color = c.dim))
+                    drawLabel(measurer, label, Offset(gutterL - 6.dp.toPx() - m.size.width, y - m.size.height / 2), axisStyle.copy(color = c.dim))
                 }
                 // time axis
                 for (sec in 0..8 step 2) {
@@ -148,18 +148,18 @@ fun SpectrogramZone(
                     drawLine(c.line, Offset(x, plotH), Offset(x, plotH + 3.dp.toPx()), strokeWidth = 1f)
                     val label = if (sec == 0) "0" else "−$sec"
                     val m = measurer.measure(label, axisStyle)
-                    drawText(measurer, label, Offset((x - m.size.width / 2).coerceIn(gutterL, gutterL + plotW - m.size.width), plotH + 3.dp.toPx()), axisStyle.copy(color = c.dim))
+                    drawLabel(measurer, label, Offset((x - m.size.width / 2).coerceIn(gutterL, gutterL + plotW - m.size.width), plotH + 3.dp.toPx()), axisStyle.copy(color = c.dim))
                 }
                 // harmonic ticks at the right edge; labels skip when they would collide
                 var lastLabelY = Float.NEGATIVE_INFINITY
                 val minGap = 10.dp.toPx()
                 for (h in harmonics.sortedByDescending { it.hz }) {
-                    if (!h.audible || h.k > 16 || h.hz > history.fMax) continue
+                    if (!h.audible || h.k > 16 || h.hz > history.fMax || h.hz < history.fMin) continue
                     val y = history.yFraction(h.hz) * plotH
                     drawLine(c.mut, Offset(gutterL + plotW, y), Offset(gutterL + plotW + 4.dp.toPx(), y), strokeWidth = 1.5f)
                     if (y - lastLabelY >= minGap) {
                         val m = measurer.measure(h.k.toString(), axisStyle)
-                        drawText(measurer, h.k.toString(), Offset(gutterL + plotW + 6.dp.toPx(), y - m.size.height / 2), axisStyle.copy(color = c.mut))
+                        drawLabel(measurer, h.k.toString(), Offset(gutterL + plotW + 6.dp.toPx(), y - m.size.height / 2), axisStyle.copy(color = c.mut))
                         lastLabelY = y
                     }
                 }
@@ -168,7 +168,7 @@ fun SpectrogramZone(
     }
 }
 
-private fun DrawScope.drawTrace(history: SpectrogramHistory, end: Long, x0: Float, colW: Float, plotH: Float, c: ru.dvedev.me.cupola.ui.theme.CupolaColors) {
+private fun DrawScope.drawTrace(history: SpectrogramHistory, end: Long, x0: Float, colW: Float, plotH: Float, c: ru.dvedev.me.cupola.ui.theme.CupolaColors, th: CentsThresholds) {
     val start = (end - VISIBLE_COLUMNS).coerceAtLeast(0)
     var prevX = Float.NaN
     var prevY = Float.NaN
@@ -183,8 +183,8 @@ private fun DrawScope.drawTrace(history: SpectrogramHistory, end: Long, x0: Floa
             val cents = history.cents[s]
             val color = when {
                 cents.isNaN() -> c.dim
-                abs(cents) <= CentsThresholds.OK -> c.ok
-                abs(cents) <= CentsThresholds.WARN -> c.warn
+                abs(cents) <= th.ok -> c.ok
+                abs(cents) <= th.warn -> c.warn
                 else -> c.bad
             }
             // an octave jump between neighbouring frames is a detector slip, not a glide: break the line

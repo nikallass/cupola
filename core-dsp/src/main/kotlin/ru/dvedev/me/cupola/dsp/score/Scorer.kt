@@ -30,6 +30,10 @@ enum class Gate {
 }
 
 data class ScoreParams(
+    /** Weights of the indicators; defaults are [ScoreWeights], adjustable in advanced settings. */
+    val ringWeight: Double = ScoreWeights.RING,
+    val pitchWeight: Double = ScoreWeights.PITCH,
+    val steadyWeight: Double = ScoreWeights.STEADY,
     /** dB of `RingRatio_norm` above baseline that counts as full ring. */
     val targetGainDb: Double = 6.0,
     val confidenceMin: Double = 0.7,
@@ -128,7 +132,8 @@ class Scorer(
         val ring = ringSmooth.process(ringRaw)
         val pitch = pitchSmooth.process(pitchRaw)
         val steady = steadySmooth.process(steadyRaw)
-        val score = if (pushed) 0.0 else ScoreWeights.RING * ring + ScoreWeights.PITCH * pitch + ScoreWeights.STEADY * steady
+        val weightSum = params.ringWeight + params.pitchWeight + params.steadyWeight
+        val score = if (pushed || weightSum <= 0.0) 0.0 else (params.ringWeight * ring + params.pitchWeight * pitch + params.steadyWeight * steady) / weightSum
 
         streak = if (score >= params.streakScore) streak + hopSeconds else 0.0
         val streakOut = if (streak >= params.streakSeconds) streak else 0.0
