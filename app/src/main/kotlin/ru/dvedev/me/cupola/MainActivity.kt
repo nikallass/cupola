@@ -1,37 +1,41 @@
 package ru.dvedev.me.cupola
 
+import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import ru.dvedev.me.cupola.ui.preview.TokensPreviewScreen
+import ru.dvedev.me.cupola.ui.theme.CupolaTheme
+import ru.dvedev.me.cupola.ui.theme.ThemeMode
+import ru.dvedev.me.cupola.ui.theme.resolvesToDark
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    Placeholder()
-                }
+            // Theme mode lives in memory until settings land in T-060 (DataStore).
+            var mode by rememberSaveable { mutableStateOf(ThemeMode.SYSTEM) }
+            val dark = mode.resolvesToDark()
+            LaunchedEffect(dark) { applySystemBars(dark) }
+            CupolaTheme(dark = dark) {
+                TokensPreviewScreen(mode = mode, onModeChange = { mode = it })
             }
         }
     }
-}
 
-/** Temporary content until the Analysis screen lands (T-050). */
-@Composable
-private fun Placeholder() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = stringResource(R.string.app_name) + " " + BuildConfig.VERSION_NAME)
+    private fun applySystemBars(dark: Boolean) {
+        val style = if (dark) {
+            SystemBarStyle.dark(AndroidColor.TRANSPARENT)
+        } else {
+            SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
+        }
+        enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
     }
 }
