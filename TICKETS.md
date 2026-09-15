@@ -8,21 +8,23 @@
 
 ## E0 · Инфраструктура
 
-### T-001 · Инициализация репозитория `todo`
+### T-001 · Инициализация репозитория `done`
 - `git init`, `.gitignore` (Gradle/Android/IDE), `LICENSE` (MIT), `README.md` (описание, ограничения §13, «не медицинский инструмент»).
 - Первый коммит: SPEC, RESEARCH, CLAUDE.md, TICKETS.md, design/.
 - **Готово, когда:** `git log` содержит initial commit; README описывает, как собрать.
 
-### T-002 · Gradle-каркас, модули `todo` · после T-001
+### T-002 · Gradle-каркас, модули `done` · после T-001
 - Gradle KTS, version catalog (`libs.versions.toml`): AGP 8.x под Gradle 8.11, Kotlin 2.x, Compose BOM, compileSdk 35, minSdk 26, targetSdk 35, JDK 17.
 - Модули: `:app`, `:core-audio`, `:core-dsp` (jvm), `:core-notation` (jvm), `:core-testdata` (jvm). В `:core-dsp`/`:core-notation`/`:core-testdata` — `kotlin("jvm")`, без Android-плагина; в конфигурации запрещён импорт `android.*`.
 - `applicationId = ru.dvedev.me.cupola`, `versionName 0.1.0`.
 - **Готово, когда:** `./gradlew :core-dsp:test :app:assembleDebug` проходит на сервере; пустое приложение ставится на E11.
+- Итог 2026‑09‑15: AGP 8.7.3 / Gradle 8.11.1 / Kotlin 2.1.0 / Compose BOM 2024.12.01; запрет `android.*`/`androidx.*` в JVM-модулях — задача `checkNoAndroidImports` в корневом `build.gradle.kts`, входит в `check`.
 
-### T-003 · `scripts/deploy.sh` `todo` · после T-002
+### T-003 · `scripts/deploy.sh` `done` · после T-002
 - `rsync` (исключая `build/`, `.gradle/`) → `root@217.60.62.102:/root/cupola`; `./gradlew :app:assembleDebug` там; `scp` APK в `build/`; `adb -s 192.168.0.16:5555 install -r`; опционально `am start`.
 - Флаги: `--test` (только `:core-dsp:test`), `--no-install`, `--logcat` (хвост логов пакета после запуска).
 - **Готово, когда:** одна команда от правки до запущенного приложения на планшете; время цикла измерено и записано в README.
+- Итог 2026‑09‑15: добавлены `--check` (`gradlew check`) и `-- <args>` (проброс аргументов Gradle). Время при тёплом демоне: полный цикл до запущенного приложения — 61 с, `--test` — 6 с, `--check` — 56 с (lint). Первый запуск с загрузкой Gradle и зависимостей — ~5 мин.
 
 ### T-004 · Дизайн-токены и шрифты `todo` · после T-002
 - Compose-тема: цвета §15.4 (светлая/тёмная), типографика Manrope + IBM Plex Mono (вшить, OFL), размеры бейджей/подписей.

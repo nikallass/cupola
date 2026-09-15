@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Состояние репозитория
 
-Кода пока нет — только документы. Проект **«Купол» (Cupola)**: опенсорсный офлайн Android-визуализатор вокальной тренировки (спектрограмма, нота, обертоны, «звон» = певческая форманта, геймификация с вибрацией).
+Проект **«Купол» (Cupola)**: опенсорсный офлайн Android-визуализатор вокальной тренировки (спектрограмма, нота, обертоны, «звон» = певческая форманта, геймификация с вибрацией).
 
 - `SPEC.md` — **источник истины**: продуктовая и техническая спецификация, формулы метрик, режимы, модель данных, этапы, тесты. **§15 (решения ревью 2026‑09‑15 и визуал v0.1) имеет приоритет над остальными разделами** там, где они расходятся: там границы версии 0.1, структура экрана «Анализ», палитра, логика сессии/очков, настройки.
 - `TICKETS.md` — план работ v0.1 по эпикам E0–E5 с зависимостями и критериями готовности; статусы вести прямо в нём. Backlog — в конце файла; не тянуть его в v0.1 без запроса.
@@ -20,9 +20,11 @@ Kotlin + Jetpack Compose, Android 8.0+ (API 26), Gradle KTS, **ручной DI (
 Эта машина — arm64-VM (AAPT2 из AGP под неё не поставляется), поэтому сборка идёт на сервере, а запуск — на планшете в локальной сети:
 
 ```
-scripts/deploy.sh            # rsync → сервер → gradlew :app:assembleDebug → scp APK → adb install на E11
-scripts/deploy.sh --test     # только ./gradlew :core-dsp:test на сервере
-./gradlew :core-dsp:test --tests "*.PitchTest"   # один класс тестов (на сервере)
+scripts/deploy.sh            # rsync → сервер → gradlew :app:assembleDebug → scp APK → adb install + запуск на E11 (~60 с)
+scripts/deploy.sh --test     # только JVM-тесты :core-dsp/:core-notation на сервере (~6 с)
+scripts/deploy.sh --check    # gradlew check: тесты + checkNoAndroidImports + lint
+scripts/deploy.sh --test -- --tests "*.PitchTest"   # один класс тестов
+scripts/deploy.sh --logcat   # после запуска — logcat процесса приложения
 ```
 
 - Сервер: `ssh -i ~/.ssh/llms_id_rsa root@217.60.62.102`, проект в `/root/cupola`, JDK 17, SDK в `/opt/android-sdk` (platform 35, build-tools 35).
@@ -32,14 +34,14 @@ scripts/deploy.sh --test     # только ./gradlew :core-dsp:test на сер
 ## Архитектура (модули)
 
 ```
-:app            — Compose UI, навигация, DI (Hilt), гаптика, Room
-:core-audio     — AudioRecord, ring buffer, выбор источника
+:app            — Compose UI, навигация, ручной DI, гаптика, DataStore
+:core-audio     — AudioRecord, ring buffer, выбор источника (Android library)
 :core-dsp       — FFT, pitch, метрики, калибровка, скоринг  ← БЕЗ Android-зависимостей
 :core-notation  — имена нот RU/EN, октавы, Гц ↔ MIDI ↔ центы
 :core-testdata  — генераторы синтетических сигналов для тестов
 ```
 
-Ключевая граница: **`:core-dsp` и `:core-notation` — чистый JVM**, тестируются на десктопе и должны остаться пригодными для KMP. Никаких `android.*` импортов в них.
+Ключевая граница: **`:core-dsp`, `:core-notation`, `:core-testdata` — чистый JVM** (`kotlin("jvm")`, JUnit 5 через `kotlin("test")`), тестируются на десктопе и должны остаться пригодными для KMP. Никаких `android.*`/`androidx.*` импортов в них — задача `checkNoAndroidImports` в корневом `build.gradle.kts` валит `check`. Версии — в `gradle/libs.versions.toml`.
 
 Пайплайн (§4 спеки): `mic → AudioRecord 48k → ring buffer → окно 2048/hop 480 Hann → FFT → спектрограмма/гистограмма → pYIN (f0, confidence) → harmonic tracker (k·f0 ± 3%) → метрики на скользящем окне → gate + score → StateFlow<FrameMetrics> (50–100 Гц) → UI + haptics`. Pitch-детектор — за интерфейсом `PitchDetector` (pYIN по умолчанию, MPM в настройках, позже CREPE-tiny/SPICE).
 
