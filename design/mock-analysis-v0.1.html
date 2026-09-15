@@ -1,0 +1,478 @@
+<title>Купол · Анализ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#f7f0e7; --panel:#fffaf2; --panel2:#efe6d5; --line:#ddd4c4; --line2:#c9bda0;
+  --ink:#20201d; --mut:#5c564d; --dim:#6b6455;
+  --gold:#c59642; --gold-ink:#82631f; --violet:#8b5cf6; --violet-ink:#6d28d9;
+  --ok:#2a6f53; --warn:#82631f; --bad:#9d3f33;
+  --map0:255,250,242; --map1:197,150,66; --map2:32,32,29;
+  --page-bg:#ece4d6; --page-ink:#20201d; --page-panel:#fffaf2;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1c1b18; --panel:#24231f; --panel2:#2e2c27; --line:#3b382f; --line2:#4d493f;
+    --ink:#efe8da; --mut:#b5ac9c; --dim:#8c8474;
+    --gold:#d6ab5a; --gold-ink:#e2c07a; --violet:#a78bfa; --violet-ink:#b7a2fb;
+    --ok:#63b48e; --warn:#d1a24a; --bad:#d4705f;
+    --map0:36,35,31; --map1:214,171,90; --map2:250,244,232;
+    --page-bg:#121110; --page-ink:#efe8da; --page-panel:#1c1b18;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1c1b18; --panel:#24231f; --panel2:#2e2c27; --line:#3b382f; --line2:#4d493f;
+  --ink:#efe8da; --mut:#b5ac9c; --dim:#8c8474;
+  --gold:#d6ab5a; --gold-ink:#e2c07a; --violet:#a78bfa; --violet-ink:#b7a2fb;
+  --ok:#63b48e; --warn:#d1a24a; --bad:#d4705f;
+  --map0:36,35,31; --map1:214,171,90; --map2:250,244,232;
+  --page-bg:#121110; --page-ink:#efe8da; --page-panel:#1c1b18;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page-bg);color:var(--page-ink);font:14px/1.45 Manrope,system-ui,sans-serif;padding-block:20px;padding-inline:16px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font:600 18px/1.2 Manrope,sans-serif;margin:0;letter-spacing:-.01em}
+h1 small{font:500 12px IBM Plex Mono,monospace;color:var(--dim);margin-left:10px;letter-spacing:.06em;text-transform:uppercase}
+details.settings{background:var(--page-panel);border:1px solid var(--line);border-radius:12px;padding:0 14px}
+details.settings summary{cursor:pointer;font:600 13px Manrope,sans-serif;padding:12px 0;color:var(--mut);list-style:none;display:flex;align-items:center;gap:8px}
+details.settings summary::-webkit-details-marker{display:none}
+details.settings summary::before{content:'';width:7px;height:7px;border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);transform:rotate(-45deg);transition:transform .15s}
+details.settings[open] summary::before{transform:rotate(45deg)}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:4px 0 14px}
+.ctl{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mut)}
+.ctl label{font:500 10.5px IBM Plex Mono,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:transparent;color:var(--mut);font:500 12px Manrope,sans-serif;padding:5px 11px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--violet-ink)}
+.seg button:focus-visible{outline:2px solid var(--violet);outline-offset:-2px}
+.ctl input[type=range]{width:110px;accent-color:var(--violet-ink)}
+.ctl select,.ctl input[type=number]{font:500 12px Manrope,sans-serif;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px 8px}
+.ctl input[type=number]{width:72px;font-family:IBM Plex Mono,monospace}
+.legend{font-size:12px;color:var(--mut);max-width:72ch;line-height:1.5;margin:0;padding:12px 0 14px;border-top:1px solid var(--line)}
+.legend code{font:500 11.5px IBM Plex Mono,monospace;background:var(--page-panel);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.stage{display:flex;justify-content:center}
+/* device: 1 dp = var(--dp) */
+.device{container-type:inline-size;width:min(100%,540px);background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:22px;box-shadow:0 12px 40px #00000022;overflow:hidden;position:relative}
+.device.land{width:min(100%,1100px)}
+.screen{--dp:.125cqw;aspect-ratio:800/1333;display:flex;flex-direction:column;position:relative;background:var(--panel);font-size:calc(14*var(--dp))}
+.land .screen{--dp:.075cqw;aspect-ratio:1333/800;display:grid;grid-template-columns:calc(360*var(--dp)) 1fr;grid-template-rows:auto minmax(0,1fr) auto}
+.top{display:flex;justify-content:space-between;align-items:center;gap:calc(10*var(--dp));padding:calc(8*var(--dp)) calc(14*var(--dp));background:color-mix(in srgb,var(--panel2) 60%,transparent);border-bottom:1px solid var(--line);position:relative;z-index:3}
+.land .top{grid-column:1/-1;grid-row:1}
+.top .l{display:flex;align-items:center;gap:calc(10*var(--dp));font:400 calc(11*var(--dp)) IBM Plex Mono,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.top .l b{color:var(--ink);font-weight:600}
+.top .r{display:flex;align-items:center;gap:calc(12*var(--dp))}
+.stats{display:flex;gap:calc(14*var(--dp));font:500 calc(15*var(--dp)) IBM Plex Mono,monospace;color:var(--mut);font-variant-numeric:tabular-nums;white-space:nowrap}
+.stats b{color:var(--ink);font-weight:600}
+.stats .pts{color:var(--gold-ink)}
+.sec{display:flex;flex-direction:column;min-height:0;border-top:1px solid var(--line);position:relative}
+.sec:first-child{border-top:0}
+.land .sec.note{grid-column:1;grid-row:2/4;border-top:0}
+.land .sec.spec{grid-column:2;grid-row:2;border-top:0;border-left:1px solid var(--line)}
+.land .sec.hist{grid-column:2;grid-row:3;border-left:1px solid var(--line)}
+.land .note{border-right:1px solid var(--line)}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:calc(8*var(--dp));background:color-mix(in srgb,var(--panel2) 60%,transparent);border-bottom:1px solid var(--line);padding:calc(6*var(--dp)) calc(14*var(--dp));position:relative;z-index:1}
+.badge{font:500 calc(10.5*var(--dp)) IBM Plex Mono,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-ink);border:1px solid color-mix(in srgb,var(--violet) 35%,transparent);border-radius:calc(4*var(--dp));padding:calc(1*var(--dp)) calc(6*var(--dp));white-space:nowrap}
+.hd .r{font:400 calc(11*var(--dp)) IBM Plex Mono,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:calc(10*var(--dp));white-space:nowrap}
+.hd .r b{color:var(--ink);font-weight:600}
+.gear{width:calc(26*var(--dp));height:calc(26*var(--dp));border-radius:50%;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;color:var(--mut)}
+.gear svg{width:calc(15*var(--dp));height:calc(15*var(--dp))}
+.spec{flex:1 1 auto;min-height:0}
+.hist{flex:0 0 calc(270*var(--dp))}
+.land .hist{flex:0 0 auto;height:calc(300*var(--dp))}
+.cv{position:relative;flex:1;min-height:0}
+.cv canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* note */
+.note .glow{position:absolute;inset:0;background:var(--ok);opacity:0;transition:opacity .25s;pointer-events:none}
+.nbody{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto calc(30*var(--dp));gap:calc(6*var(--dp)) calc(16*var(--dp));padding:calc(12*var(--dp)) calc(20*var(--dp)) calc(6*var(--dp));align-items:center;position:relative;z-index:1}
+.land .nbody{grid-template-columns:1fr;grid-template-rows:auto auto calc(30*var(--dp));align-content:start;gap:calc(14*var(--dp));padding-top:calc(18*var(--dp))}
+.nm{display:flex;flex-direction:column;gap:calc(6*var(--dp));min-width:0}
+.nm .big{display:flex;align-items:baseline;gap:calc(14*var(--dp));font:700 calc(84*var(--dp))/1 Manrope,sans-serif;letter-spacing:-.025em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.land .nm .big{font-size:calc(66*var(--dp));flex-wrap:wrap;gap:calc(8*var(--dp)) calc(14*var(--dp))}
+.nm .big .en{font:500 calc(38*var(--dp)) IBM Plex Mono,monospace;color:var(--dim)}
+.nm .cents{font:600 calc(40*var(--dp)) IBM Plex Mono,monospace;font-variant-numeric:tabular-nums;min-width:calc(120*var(--dp))}
+.scale{position:relative;height:calc(20*var(--dp));margin-top:calc(4*var(--dp))}
+.scale .bar{position:absolute;left:0;right:0;top:50%;height:calc(2*var(--dp));background:var(--line2);border-radius:1px}
+.scale .z{position:absolute;left:calc(50% - 1px);top:0;bottom:0;width:calc(2*var(--dp));background:var(--dim)}
+.scale .ok{position:absolute;left:40%;right:40%;top:calc(5*var(--dp));bottom:calc(5*var(--dp));background:color-mix(in srgb,var(--ok) 25%,transparent);border-radius:calc(3*var(--dp))}
+.scale .tick{position:absolute;top:calc(6*var(--dp));bottom:calc(6*var(--dp));width:1px;background:var(--line2)}
+.scale .pin{position:absolute;top:calc(-2*var(--dp));width:calc(24*var(--dp));height:calc(24*var(--dp));border-radius:50%;transform:translateX(-50%);border:calc(3*var(--dp)) solid var(--panel);box-shadow:0 0 0 1px var(--line);transition:left .08s linear}
+.sub{display:flex;gap:calc(18*var(--dp));font:400 calc(14*var(--dp)) IBM Plex Mono,monospace;color:var(--dim);letter-spacing:.02em;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.sub b{color:var(--mut);font-weight:500}
+.ring{display:flex;flex-direction:column;align-items:center}
+.ring svg{width:calc(220*var(--dp));height:calc(134*var(--dp))}
+.land .ring svg{width:calc(250*var(--dp));height:calc(152*var(--dp))}
+.ring .lbl{font:500 calc(11*var(--dp)) IBM Plex Mono,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.ring .val{font:600 calc(30*var(--dp)) IBM Plex Mono,monospace;color:var(--gold-ink);font-variant-numeric:tabular-nums;margin-top:calc(-46*var(--dp))}
+.hint{grid-column:1/-1;height:calc(30*var(--dp));font:500 calc(17*var(--dp)) Manrope,sans-serif;color:var(--mut);display:flex;align-items:center;gap:calc(10*var(--dp));overflow:hidden}
+.hint .dot{width:calc(9*var(--dp));height:calc(9*var(--dp));border-radius:50%;background:var(--warn);flex:none}
+.hint.good .dot{background:var(--ok)}
+.btn{border:0;border-radius:999px;padding:calc(8*var(--dp)) calc(22*var(--dp));font:600 calc(14*var(--dp)) Manrope,sans-serif;cursor:pointer;background:var(--violet-ink);color:#fff;box-shadow:0 4px 14px color-mix(in srgb,var(--violet-ink) 35%,transparent);transition:all .2s;white-space:nowrap}
+.btn.stop{background:var(--panel);color:var(--mut);border:1px solid var(--line);box-shadow:none}
+.btn.pause{background:transparent;color:var(--mut);border:1px solid var(--line2);box-shadow:none;padding-inline:calc(14*var(--dp));display:flex;align-items:center;gap:calc(6*var(--dp))}
+.btn.pause svg{width:calc(14*var(--dp));height:calc(14*var(--dp))}
+.btn.pause.on{color:var(--violet-ink);border-color:var(--violet)}
+.btn:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+.coins{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2}
+.coin{position:absolute;border-radius:50%;background:var(--gold);box-shadow:inset 0 0 0 calc(2*var(--dp)) color-mix(in srgb,var(--gold-ink) 60%,transparent);animation:fly 1.1s ease-out forwards}
+@keyframes fly{0%{transform:translate(0,0) scale(.6);opacity:0}15%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1);opacity:0}}
+@media (prefers-reduced-motion:reduce){.coin{animation-duration:.01s}}
+@media (max-width:640px){.land{width:100%}.controls{gap:8px 12px}}
+</style>
+
+<div class="wrap">
+  <h1>Купол · экран «Анализ» <small>макет · KENSHI E11 · 800×1333 dp</small></h1>
+
+  <div class="stage">
+    <div class="device" id="device">
+      <div class="screen" id="screen">
+        <div class="top"><div class="l"><b>Купол</b><span id="voiceLbl">Тенор</span> · <b id="bandLbl">2.3–3.1 кГц</b></div><div class="r"><div class="stats"><span id="tm">—</span><span class="pts"><b id="pts">—</b> очк.</span></div><button class="btn pause" id="pauseBtn"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg><span>Пауза</span></button><button class="btn" id="btn">Старт</button><span class="gear" title="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span></div></div>
+
+        <div class="sec note">
+          <div class="glow" id="glow"></div>
+          <div class="nbody">
+            <div class="nm">
+              <div class="big"><span id="noteRu">Соль¹</span><span class="en" id="noteEn">G4</span><span class="cents" id="cents">+4 ¢</span></div>
+              <div class="scale"><div class="bar"></div><div class="ok"></div><div class="tick" style="left:25%"></div><div class="tick" style="left:75%"></div><div class="z"></div><div class="pin" id="pin"></div></div>
+              <div class="sub"><span><b id="f0">392.4</b> Гц</span><span>обертонов <b id="ovLbl">14</b></span><span id="vib">вибрато <b>5.6 Гц</b> · <b>±58 ¢</b></span><span id="tgt" hidden>цель <b>Соль¹ · G4</b> (тап по ноте)</span></div>
+            </div>
+            <div class="ring">
+              <svg viewBox="0 0 150 92" aria-label="Купол"><path d="M12 84 A63 63 0 0 1 138 84" fill="none" stroke="var(--panel2)" stroke-width="10" stroke-linecap="round"/><path id="ringArc" d="M12 84 A63 63 0 0 1 138 84" fill="none" stroke="var(--gold)" stroke-width="10" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
+              <div class="val" id="ringVal">0.62</div><div class="lbl">купол</div>
+            </div>
+            <div class="hint" id="hint"></div>
+          </div>
+        </div>
+
+        <div class="sec spec">
+          <div class="hd"><span class="badge">Спектрограмма</span><span class="r">8 с · лог</span></div>
+          <div class="cv"><canvas id="sg"></canvas><canvas id="sgo"></canvas></div>
+        </div>
+
+        <div class="sec hist">
+          <div class="hd"><span class="badge">Спектр</span><span class="r">купол <b id="ringDb">+3.1 dB</b> к калибровке</span></div>
+          <div class="cv"><canvas id="hg"></canvas></div>
+        </div>
+
+        <div class="coins" id="coinLayer"></div>
+      </div>
+    </div>
+  </div>
+
+  <details class="settings">
+    <summary>Настройки макета</summary>
+    <div class="controls" id="controls">
+      <div class="ctl"><label>Тема</label><span class="seg" data-key="theme"><button aria-pressed="true" data-v="light">Светлая</button><button data-v="dark">Тёмная</button></span></div>
+      <div class="ctl"><label>Ориентация</label><span class="seg" data-key="orient"><button aria-pressed="true" data-v="port">Портрет</button><button data-v="land">Ландшафт</button></span></div>
+      <div class="ctl"><label>Сессия</label><span class="seg" data-key="session"><button aria-pressed="true" data-v="idle">Не начата</button><button data-v="on">Идёт</button></span></div>
+      <div class="ctl"><label>Цель</label><span class="seg" data-key="target"><button aria-pressed="true" data-v="off">Нет</button><button data-v="on">Закрепить текущую ноту</button></span></div>
+      <div class="ctl"><label>Нотация</label><span class="seg" data-key="notation"><button aria-pressed="true" data-v="both">Обе</button><button data-v="ru">RU</button><button data-v="en">EN</button></span></div>
+      <div class="ctl"><label>Голос</label><select id="voiceSel">
+        <option value="bass">Бас · 2000–2800</option><option value="baritone">Баритон · 2050–2850</option><option value="tenor" selected>Тенор · 2300–3100</option>
+        <option value="mezzo">Контральто / меццо · 2500–3300</option><option value="soprano">Сопрано · 2700–3500</option><option value="unset">Не задан · 2400–3200</option><option value="custom">Свой диапазон</option></select></div>
+      <div class="ctl"><label>Купол, Гц</label><input type="number" id="bandLo" min="1500" max="5000" step="50" value="2300"> – <input type="number" id="bandHi" min="1500" max="6000" step="50" value="3100"></div>
+          </div>
+    <p class="legend">Синтетический голос: попевка Ля малой → Соль¹ с удержанием (вибрато 5.6 Гц), затем вниз; окно Hann 2048 @ 48 кГц, hop 10 мс. Обертоны — метки <code>k</code> у правого края спектрограммы и над пиками спектра; полоса купола — золотая лента по диапазону из настроек. Линия f0 окрашена по попаданию в ближайшую ноту. Карточка ноты зеленеет по score; чем больше доля звука в куполе, тем чаще и крупнее капают очки.</p>
+  </details>
+</div>
+
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const state = {theme:'light', orient:'port', session:'idle', target:'off', notation:'both', voice:'tenor', band:[2300,3100], paused:false};
+const BANDS = {bass:[2000,2800], baritone:[2050,2850], tenor:[2300,3100], mezzo:[2500,3300], soprano:[2700,3500], unset:[2400,3200]};
+const VOICE_RU = {bass:'Бас', baritone:'Баритон', tenor:'Тенор', mezzo:'Меццо', soprano:'Сопрано', unset:'Голос не задан', custom:'Свой диапазон'};
+const FMIN=80, FMAX=8000, DBMIN=-92, DBMAX=-18;
+const logF = f => Math.log(f/FMIN)/Math.log(FMAX/FMIN);
+const COLS=800, ROWS=480, COLS_PER_SEC=100;
+const BIN_SIGMA = 15;
+
+/* ---------- notation ---------- */
+const RU = ['до','ре','ми','фа','соль','ля','си'];
+const NAMES = [['C',0],['C♯',0],['D',1],['D♯',1],['E',2],['F',3],['F♯',3],['G',4],['G♯',4],['A',5],['A♯',5],['B',6]];
+function noteName(midi){
+  const n = ((midi%12)+12)%12, oct = Math.floor(midi/12)-1;
+  const [en,ruIdx] = NAMES[n]; const sharp = en.includes('♯');
+  const cap = s => s[0].toUpperCase()+s.slice(1);
+  let ru = cap(RU[ruIdx]) + (sharp?'♯':'');
+  const sup = {5:'¹',6:'²',7:'³',8:'⁴'}[oct+1];
+  if (oct>=4) ru += sup ?? ''; else if (oct===3) ru += ' малой'; else if (oct===2) ru += ' большой'; else ru += ' контр';
+  return {ru, en: en+oct};
+}
+
+/* ---------- synthetic singer ---------- */
+const PHRASE = [[57,.6],[60,.5],[64,.5],[67,2.8],[64,.5],[60,.5],[57,.9],[null,1.2]];
+const PH_LEN = PHRASE.reduce((a,[,d])=>a+d,0);
+function singer(t){
+  let u = t % PH_LEN, i=0; while (u > PHRASE[i][1]) { u -= PHRASE[i][1]; i++; }
+  const [midi,dur] = PHRASE[i];
+  if (midi===null) return {voiced:false, t};
+  const held = dur>2;
+  const vib = held && u>0.35 ? 58*Math.sin(2*Math.PI*5.6*t) * Math.min(1,(u-0.35)/0.5) : 0;
+  const onsetGlide = u<0.12 ? -35*(1-u/0.12) : 0;
+  const drift = held ? -3*u : 0;
+  const jitter = 3*Math.sin(t*37.1)+2*Math.sin(t*61.7);
+  const cents = vib + onsetGlide + drift + jitter + 4;
+  const f0 = 440*Math.pow(2,(midi-69+cents/100)/12);
+  const ringAuto = held ? 0.35+0.45*Math.min(1,u/1.2) : 0.3+0.1*Math.sin(t*1.3);
+  const ring = ringAuto;
+  const spl = -22 + (held? 2*Math.min(1,u/2):0);
+  const breath = u<0.09 ? (1-u/0.09) : 0;
+  const env = Math.min(1,u/0.04) * (dur-u<0.08 ? (dur-u)/0.08 : 1);
+  return {voiced:true, t, midi, f0, cents, ring, spl, held, u, breath, env, vibOn: Math.abs(vib)>5};
+}
+function harmAmp(k, s){
+  const fk = k*s.f0;
+  const source = -6*Math.log2(k) - (fk>1000 ? 6*Math.log2(fk/1000) : 0);
+  const F = [[700+0.25*(s.f0-220),120,0],[1220,180,-4],[2500,220,-10],[3300,260,-14],[4400,320,-22]];
+  let filt = -30;
+  for (const [fc,bw,g] of F){ filt = Math.max(filt, g - 12*Math.pow((fk-fc)/bw,2)); }
+  const [b0,b1]=state.band; const bc=(b0+b1)/2;
+  const ringBump = (s.ring*24-10)*Math.exp(-Math.pow((fk-bc)/((b1-b0)*0.5),2));
+  const shimmer = 1.2*Math.sin(s.t*(1.7+0.31*k)+k*1.3);
+  const roll = fk>5500 ? -(fk-5500)/300 : 0;
+  return -22 + source + filt + ringBump + shimmer + roll + 20*Math.log10(Math.max(0.05,s.env));
+}
+const noiseRow = new Float32Array(ROWS).map(()=>Math.random());
+function spectrumDb(f, s, r){
+  const grain = r!==undefined ? (noiseRow[r]*4 + 3*Math.sin(f*0.021+s.t*2.3)) : 2*Math.sin(f*0.021);
+  let db = DBMIN + 7 + grain + (Math.random()*2.5);
+  if (!s.voiced) return db;
+  if (s.breath>0) db += s.breath*(9 + 6*Math.exp(-Math.pow((f-3500)/1800,2)));
+  const k = Math.round(f/s.f0); if (k<1) return db;
+  let best = db;
+  for (const kk of [k-1,k,k+1]){ if(kk<1) continue; const fk=kk*s.f0; const g=Math.exp(-0.5*Math.pow((f-fk)/BIN_SIGMA,2)); if (g<0.01) continue;
+    const a = harmAmp(kk,s); best = Math.max(best, 10*Math.log10(Math.pow(10,a/10)*g + Math.pow(10,db/10))); }
+  return best;
+}
+function harmonics(s){
+  if (!s.voiced) return [];
+  const out=[];
+  for (let k=1;k*s.f0<FMAX;k++){ const amp=harmAmp(k,s); out.push({k,f:k*s.f0,db:amp,audible: amp >= (DBMIN+7)+12 && amp >= harmAmp(1,s)-50}); }
+  return out;
+}
+
+/* ---------- colormap ---------- */
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+function lut(){
+  const c0=getCss('--map0').split(',').map(Number), c1=getCss('--map1').split(',').map(Number), c2=getCss('--map2').split(',').map(Number);
+  const t=new Uint8ClampedArray(256*4);
+  for(let i=0;i<256;i++){const x=Math.pow(i/255,1.15); let a,b,p; if(x<.55){a=c0;b=c1;p=x/.55}else{a=c1;b=c2;p=(x-.55)/.45}
+    t[i*4]=a[0]+(b[0]-a[0])*p; t[i*4+1]=a[1]+(b[1]-a[1])*p; t[i*4+2]=a[2]+(b[2]-a[2])*p; t[i*4+3]=255;}
+  return t;
+}
+let LUT = lut();
+
+/* ---------- spectrogram buffer ---------- */
+const sg=$('sg'), sgo=$('sgo'), hg=$('hg');
+const off=document.createElement('canvas'); off.width=COLS; off.height=ROWS; const octx=off.getContext('2d');
+const colImg = octx.createImageData(1,ROWS);
+const rowFreq = Array.from({length:ROWS},(_,r)=>FMIN*Math.pow(FMAX/FMIN,1-(r+0.5)/ROWS));
+const trace = new Array(COLS).fill(null);
+const levels = new Uint8Array(COLS*ROWS);
+let head=0, simT=0, lastTs=null, acc=0;
+let cur = singer(0), harm=[];
+let session={on:false,t0:0,pts:0,streak:0,lastCoin:0,lastHint:0,hint:null};
+
+function paintColumn(col){
+  for(let r=0;r<ROWS;r++){ const i=levels[col*ROWS+r]*4; colImg.data.set([LUT[i],LUT[i+1],LUT[i+2],255], r*4); }
+  octx.putImageData(colImg, col, 0);
+}
+function repaintAll(){ for(let c=0;c<COLS;c++) paintColumn(c); }
+function pushColumn(s){
+  for(let r=0;r<ROWS;r++){
+    const db=spectrumDb(rowFreq[r], s, r); const x=Math.max(0,Math.min(1,(db-DBMIN)/(DBMAX-DBMIN)));
+    levels[head*ROWS+r]=Math.round(x*255);
+  }
+  paintColumn(head);
+  trace[head] = s.voiced ? {f0:s.f0, cents:s.cents} : null;
+  head=(head+1)%COLS;
+}
+
+function centsColor(c){ const a=Math.abs(c); return a<=10?getCss('--ok'):a<=25?getCss('--warn'):getCss('--bad'); }
+function fit(c){ const r=c.getBoundingClientRect(); const dpr=Math.min(2,devicePixelRatio||1); const w=Math.round(r.width*dpr), h=Math.round(r.height*dpr); if(c.width!==w||c.height!==h){c.width=w;c.height=h;} return [w,h,dpr]; }
+const mono = (px,dpr,w=400) => `${w} ${Math.round(px*dpr)}px "IBM Plex Mono", monospace`;
+
+function drawSpectrogram(){
+  const [W,H,dpr]=fit(sg); fit(sgo);
+  const ctx=sg.getContext('2d'); const o=sgo.getContext('2d');
+  const gL=Math.round(40*dpr), gR=Math.round(34*dpr), gB=Math.round(16*dpr);
+  const pw=W-gL-gR, ph=H-gB;
+  ctx.fillStyle=getCss('--panel'); ctx.fillRect(0,0,W,H);
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  const a=COLS-head;
+  ctx.drawImage(off, head,0,a,ROWS, gL,0, pw*a/COLS, ph);
+  if (head>0) ctx.drawImage(off, 0,0,head,ROWS, gL+pw*a/COLS,0, pw*head/COLS, ph);
+
+  o.clearRect(0,0,W,H);
+  const y = f => (1-logF(f))*ph;
+  const [b0,b1]=state.band;
+  o.fillStyle='rgba(197,150,66,0.10)'; o.fillRect(gL, y(b1), pw, y(b0)-y(b1));
+  o.strokeStyle=getCss('--gold'); o.lineWidth=1*dpr; o.setLineDash([3*dpr,3*dpr]);
+  o.beginPath(); o.moveTo(gL,y(b0)); o.lineTo(gL+pw,y(b0)); o.moveTo(gL,y(b1)); o.lineTo(gL+pw,y(b1)); o.stroke(); o.setLineDash([]);
+  o.fillStyle=getCss('--gold-ink'); o.font=mono(9,dpr,500); o.textAlign='left'; o.textBaseline='bottom'; o.fillText('купол', gL+6*dpr, y(b1)-2*dpr);
+  o.fillStyle=getCss('--panel'); o.fillRect(0,0,gL,H); o.fillRect(gL+pw,0,gR,H); o.fillRect(0,ph,W,gB);
+  o.fillStyle=getCss('--dim'); o.font=mono(9.5,dpr); o.textAlign='right'; o.textBaseline='middle';
+  o.strokeStyle=getCss('--line'); o.lineWidth=1*dpr;
+  for (const [f,l] of [[100,'100'],[200,'200'],[400,'400'],[800,'800'],[1600,'1.6k'],[3200,'3.2k'],[6400,'6.4k']]){
+    o.fillText(l, gL-8*dpr, y(f)); o.beginPath(); o.moveTo(gL-4*dpr,y(f)); o.lineTo(gL,y(f)); o.stroke();
+  }
+  o.textAlign='center'; o.textBaseline='top';
+  for (let s=0;s<=8;s+=2){ const x=gL+pw*(1-s/8); o.beginPath(); o.moveTo(x,ph); o.lineTo(x,ph+3*dpr); o.stroke(); o.fillText(s?`−${s} с`:'0', s===0? x-8*dpr : x, ph+4*dpr); }
+  if (state.target==='on'){
+    const ft=392.0; o.strokeStyle=getCss('--violet'); o.lineWidth=1.5*dpr;
+    for(let k=1;k*ft<FMAX;k++){ o.globalAlpha = k===1?0.9:0.3; o.beginPath(); o.moveTo(gL,y(k*ft)); o.lineTo(gL+pw,y(k*ft)); o.stroke(); }
+    o.globalAlpha=1;
+  }
+  o.lineWidth=2*dpr; o.lineCap='round'; o.lineJoin='round';
+  let prev=null;
+  for(let i=0;i<COLS;i++){
+    const idx=(head+i)%COLS, t=trace[idx]; const x=gL+(i+0.5)*pw/COLS;
+    if(t && prev){ o.strokeStyle=centsColor(t.cents); o.beginPath(); o.moveTo(prev.x,prev.y); o.lineTo(x,y(t.f0)); o.stroke(); }
+    prev = t ? {x, y:y(t.f0)} : null;
+  }
+  o.font=mono(9,dpr); o.textAlign='left'; o.textBaseline='middle';
+  const edge=gL+pw;
+  for (const h of harm){
+    if(!h.audible) continue; const yy=y(h.f);
+    o.strokeStyle=h.k===1?getCss('--ink'):getCss('--gold-ink'); o.lineWidth=(h.k===1?2:1.5)*dpr;
+    o.beginPath(); o.moveTo(edge+2*dpr,yy); o.lineTo(edge+9*dpr,yy); o.stroke();
+    if (h.k<=16){ o.fillStyle=h.k===1?getCss('--ink'):getCss('--mut'); o.fillText(h.k, edge+12*dpr, yy); }
+  }
+  if (state.paused){ o.fillStyle=getCss('--violet-ink'); o.font=`600 ${Math.round(11*dpr)}px Manrope`; o.textAlign='left'; o.textBaseline='top'; o.fillText('ПАУЗА · −8 с … 0 · ← проскроллить 60 с', gL+8*dpr, 6*dpr); }
+}
+
+function drawHistogram(s){
+  const [W,H,dpr]=fit(hg); const c=hg.getContext('2d');
+  c.fillStyle=getCss('--panel'); c.fillRect(0,0,W,H);
+  const padL=Math.round(36*dpr), padR=Math.round(12*dpr), padT=Math.round(20*dpr), padB=Math.round(20*dpr);
+  const pw=W-padL-padR, ph=H-padT-padB;
+  const x=f=>padL+logF(f)*pw, y=db=>padT+(1-Math.max(0,Math.min(1,(db-DBMIN)/(DBMAX-DBMIN))))*ph;
+  const [b0,b1]=state.band;
+  c.fillStyle='rgba(197,150,66,0.10)'; c.fillRect(x(b0),padT,x(b1)-x(b0),ph);
+  c.strokeStyle=getCss('--line'); c.lineWidth=1*dpr; c.fillStyle=getCss('--dim'); c.font=mono(9.5,dpr); c.textAlign='center'; c.textBaseline='top';
+  for (const [f,l] of [[100,'100'],[200,'200'],[400,'400'],[800,'800'],[1600,'1.6k'],[3200,'3.2k'],[6400,'6.4k']]){
+    c.beginPath(); c.moveTo(x(f),padT); c.lineTo(x(f),padT+ph); c.stroke(); c.fillText(l,x(f),padT+ph+5*dpr);
+  }
+  c.textAlign='right'; c.textBaseline='middle'; c.globalAlpha=.6;
+  for (const db of [-20,-40,-60,-80]){ c.fillText(db, padL-6*dpr, y(db)); c.beginPath(); c.moveTo(padL,y(db)); c.lineTo(padL+pw,y(db)); c.stroke(); }
+  c.globalAlpha=1;
+  c.setLineDash([2*dpr,4*dpr]); c.strokeStyle=getCss('--line2'); c.beginPath(); c.moveTo(padL,y(DBMIN+7)); c.lineTo(padL+pw,y(DBMIN+7)); c.stroke(); c.setLineDash([]);
+  const N=Math.round(pw/dpr);
+  c.beginPath(); c.moveTo(padL,y(DBMIN));
+  for(let i=0;i<=N;i++){ const f=FMIN*Math.pow(FMAX/FMIN,i/N); c.lineTo(x(f),y(spectrumDb(f,s))); }
+  c.lineTo(padL+pw,y(DBMIN)); c.closePath();
+  c.fillStyle='rgba(197,150,66,0.18)'; c.fill();
+  c.strokeStyle=getCss('--gold'); c.lineWidth=1.25*dpr; c.stroke();
+  const aud=harm.filter(h=>h.audible);
+  if (aud.length>2){
+    c.strokeStyle=getCss('--mut'); c.lineWidth=1*dpr; c.setLineDash([4*dpr,3*dpr]); c.beginPath();
+    const P=aud.map(h=>[x(h.f),y(h.db)]); c.moveTo(P[0][0],P[0][1]);
+    for(let i=0;i<P.length-1;i++){ const p0=P[Math.max(0,i-1)],p1=P[i],p2=P[i+1],p3=P[Math.min(P.length-1,i+2)];
+      c.bezierCurveTo(p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6,p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6,p2[0],p2[1]); }
+    c.stroke(); c.setLineDash([]);
+  }
+  c.font=mono(9,dpr); c.textAlign='center'; c.textBaseline='bottom';
+  let lastX=-1e9;
+  for (const h of aud){
+    const hx=x(h.f);
+    c.strokeStyle=h.k===1?getCss('--ink'):getCss('--gold-ink'); c.lineWidth=1*dpr;
+    c.beginPath(); c.moveTo(hx,y(h.db)-3*dpr); c.lineTo(hx,y(h.db)-9*dpr); c.stroke();
+    if(h.k<=16 && hx-lastX>11*dpr){ c.fillStyle=h.k===1?getCss('--ink'):getCss('--mut'); c.fillText(h.k, hx, y(h.db)-11*dpr); lastX=hx; }
+  }
+  c.strokeStyle=getCss('--line2'); c.beginPath(); c.moveTo(padL,padT+ph); c.lineTo(padL+pw,padT+ph); c.stroke();
+}
+
+/* ---------- readouts ---------- */
+const HINTS = {pushed:'Громче ≠ звонче. Тише.', drift:'Нота плывёт. Сначала стабильность.', good:'В позиции. Не добавляй.'};
+function updateReadouts(s, dt){
+  const voiced=s.voiced;
+  const nn = voiced? noteName(state.target==='on'?67:s.midi) : null;
+  const centsTo = voiced ? (state.target==='on' ? 1200*Math.log2(s.f0/392.0) : s.cents) : 0;
+  const ru=$('noteRu'), en=$('noteEn');
+  ru.textContent = voiced? nn.ru : '—'; en.textContent = voiced? nn.en : (state.notation==='en'?'—':'');
+  ru.hidden = state.notation==='en'; en.hidden = state.notation==='ru';
+  en.classList.toggle('en', state.notation!=='en');
+  const cEl=$('cents'); cEl.textContent = voiced? (centsTo>=0?'+':'−')+Math.abs(Math.round(centsTo))+' ¢' : '';
+  cEl.style.color = voiced? centsColor(centsTo) : '';
+  const pin=$('pin'); pin.style.left = (50+Math.max(-50,Math.min(50,voiced?centsTo:0)))+'%'; pin.style.background = voiced? centsColor(centsTo) : getCss('--line');
+  $('f0').textContent = voiced? s.f0.toFixed(1) : '—';
+  $('vib').innerHTML = voiced ? (s.vibOn ? 'вибрато <b>5.6 Гц</b> · <b>±58 ¢</b>' : (s.held?'прямой тон':'')) : '';
+  $('tgt').hidden = state.target!=='on';
+  const ring = voiced? s.ring : 0;
+  $('ringArc').setAttribute('stroke-dasharray', `${Math.round(ring*100)} 100`);
+  $('ringVal').textContent = voiced? ring.toFixed(2) : '—';
+  $('ringDb').textContent = voiced? ((ring*6-1)>=0?'+':'−')+Math.abs(ring*6-1).toFixed(1)+' dB' : '—';
+  $('ovLbl').textContent = voiced? harm.filter(h=>h.audible && h.k>=2).length : '—';
+
+  const pitch = voiced? 1-Math.max(0,Math.min(1,(Math.abs(centsTo)-5)/25)) : 0;
+  const steady = voiced? (s.held? 0.85 : 0.5) : 0;
+  const score = voiced? 0.6*ring + 0.25*pitch + 0.15*steady : 0;
+  $('glow').style.opacity = (session.on ? Math.min(1,score/0.7)*0.32 : Math.min(1,score/0.7)*0.12).toFixed(3);
+
+  if (session.on){
+    const t=(simT-session.t0);
+    $('tm').textContent = `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`;
+    const interval = 0.6 - 0.48*ring;               // чаще при большем куполе
+    if (score>=0.5 && simT-session.lastCoin>interval){ session.lastCoin=simT; session.pts += 1+Math.round(2*ring); spawnCoin(score, ring); }
+    session.streak = score>=0.7 ? session.streak+dt : 0;
+    $('pts').textContent = session.pts;
+    let h=null;
+    if (voiced && s.spl > -22+12) h='pushed';
+    else if (voiced && !s.held && s.u<0.12) h='drift';
+    else if (session.streak>=3) h='good';
+    if (h && h!==session.hint && simT-session.lastHint>3){ session.hint=h; session.lastHint=simT; }
+    if (!h && simT-session.lastHint>3) session.hint=null;
+    const he=$('hint'); he.className='hint'+(session.hint==='good'?' good':'');
+    he.innerHTML = session.hint? `<span class="dot"></span>${HINTS[session.hint]}` : '';
+  } else { $('tm').textContent='—'; $('pts').textContent='—'; $('hint').innerHTML=''; }
+}
+function spawnCoin(score, ring){
+  const layer=$('coinLayer'); const r=$('ringArc').getBoundingClientRect(), L=layer.getBoundingClientRect();
+  const c=document.createElement('span'); c.className='coin';
+  const sz = 8 + 12*ring; c.style.width=sz+'px'; c.style.height=sz+'px';
+  const dx=(Math.random()-0.5)*160, dy=-(80+Math.random()*80)*(score>=0.85?1.6:1);
+  c.style.setProperty('--dx',dx+'px'); c.style.setProperty('--dy',dy+'px');
+  c.style.left=(r.left-L.left+r.width/2-sz/2)+'px'; c.style.top=(r.top-L.top+r.height*0.6)+'px';
+  if (score>=0.85){ c.style.background=getCss('--ok'); c.style.boxShadow='none'; }
+  layer.appendChild(c); setTimeout(()=>c.remove(),1200);
+}
+
+/* ---------- loop ---------- */
+function frame(ts){
+  if (lastTs===null) lastTs=ts; let dt=Math.min(0.1,(ts-lastTs)/1000); lastTs=ts;
+  if (!state.paused){
+    simT+=dt; acc+=dt;
+    while (acc>=1/COLS_PER_SEC){ acc-=1/COLS_PER_SEC; cur=singer(simT-acc); pushColumn(cur); }
+    harm=harmonics(cur);
+    updateReadouts(cur, dt);
+  }
+  drawSpectrogram(); drawHistogram(cur);
+  requestAnimationFrame(frame);
+}
+for(let i=0;i<COLS;i++){ simT+=1/COLS_PER_SEC; cur=singer(simT); pushColumn(cur); }
+harm=harmonics(cur);
+requestAnimationFrame(frame);
+
+/* ---------- controls ---------- */
+function apply(){
+  document.documentElement.setAttribute('data-theme', state.theme); LUT=lut(); repaintAll();
+  $('device').classList.toggle('land', state.orient==='land');
+  $('voiceLbl').textContent = VOICE_RU[state.voice];
+  const [b0,b1]=state.band; $('bandLbl').textContent=`${(b0/1000).toFixed(1)}–${(b1/1000).toFixed(1)} кГц`;
+  const on = state.session==='on';
+  if (on && !session.on){ session={on:true,t0:simT,pts:0,streak:0,lastCoin:0,lastHint:0,hint:null}; }
+  if (!on) session.on=false;
+  $('btn').textContent = on? 'Стоп' : 'Старт'; $('btn').classList.toggle('stop', on);
+  $('pauseBtn').classList.toggle('on', state.paused); $('pauseBtn').querySelector('span').textContent = state.paused? 'Дальше' : 'Пауза';
+}
+document.querySelectorAll('.seg').forEach(seg=>{
+  seg.addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return;
+    seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', x===b));
+    state[seg.dataset.key]=b.dataset.v; apply(); });
+});
+$('voiceSel').addEventListener('change', e=>{ state.voice=e.target.value; if (BANDS[state.voice]){ state.band=[...BANDS[state.voice]]; $('bandLo').value=state.band[0]; $('bandHi').value=state.band[1]; } apply(); });
+for (const id of ['bandLo','bandHi']) $(id).addEventListener('change', ()=>{ const lo=+$('bandLo').value, hi=+$('bandHi').value; if (hi-lo>=200){ state.band=[lo,hi]; state.voice='custom'; $('voiceSel').value='custom'; apply(); } });
+$('btn').addEventListener('click', ()=>{ document.querySelector(`.seg[data-key=session] [data-v=${state.session==='on'?'idle':'on'}]`).click(); });
+$('pauseBtn').addEventListener('click', ()=>{ state.paused=!state.paused; apply(); });
+if (matchMedia('(prefers-color-scheme: dark)').matches){ document.querySelector('.seg[data-key=theme] [data-v=dark]').click(); } else apply();
+})();
+</script>
