@@ -35,6 +35,9 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
 
     val spectrogram = SpectrogramHistory(hopSeconds = engine.analyzer.hopSeconds)
     val spectrum = SpectrumSnapshot { engine.analyzer.noise }
+    val noteSmoother = NoteDisplaySmoother(engine.analyzer.hopSeconds)
+    val displayNote: StateFlow<DisplayNote> = noteSmoother.state
+
 
     /** Pinned target note (tap on the note zone), or null. */
     var targetNote: Note? by mutableStateOf(null)
@@ -46,6 +49,8 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
 
     /** Pause (T-056): readouts freeze on the last frame, the spectrogram can be scrolled back. */
     var frozenMetrics: FrameMetrics? by mutableStateOf(null)
+        private set
+    var frozenNote: DisplayNote? by mutableStateOf(null)
         private set
     var pausedHead: Long? by mutableStateOf(null)
         private set
@@ -66,6 +71,7 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
     init {
         engine.addListener(spectrogram)
         engine.addListener(spectrum)
+        engine.addListener(noteSmoother)
     }
 
     fun startListening() {
@@ -100,11 +106,13 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
     fun togglePause() {
         if (pausedHead == null) {
             frozenMetrics = uiMetrics.value
+            frozenNote = displayNote.value
             pausedHead = spectrogram.head
             scrollColumns = 0
             spectrum.freeze()
         } else {
             frozenMetrics = null
+            frozenNote = null
             pausedHead = null
             scrollColumns = 0
             spectrum.unfreeze()
@@ -120,5 +128,6 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
     override fun onCleared() {
         engine.removeListener(spectrogram)
         engine.removeListener(spectrum)
+        engine.removeListener(noteSmoother)
     }
 }

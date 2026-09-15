@@ -10,7 +10,9 @@ import ru.dvedev.me.cupola.dsp.metrics.NoiseFloor
  * Latest spectrum for the spectrum zone (T-054): dB per bin, harmonics, noise profile.
  * Double-buffered so the UI thread never reads a half-written frame.
  */
-class SpectrumSnapshot(private val noise: () -> NoiseFloor?) : FrameListener {
+class SpectrumSnapshot(private val smoothing: Float = 0.5f, private val noise: () -> NoiseFloor?) : FrameListener {
+    private var ema: FloatArray = FloatArray(0)
+
     class Frame(bins: Int) {
         val db = FloatArray(bins)
         val floorDb = FloatArray(bins)
@@ -55,7 +57,12 @@ class SpectrumSnapshot(private val noise: () -> NoiseFloor?) : FrameListener {
         val next = 1 - current
         val f = b[next]
         val db = spectrum.db
-        for (k in db.indices) f.db[k] = db[k].toFloat()
+        if (ema.size != db.size) ema = FloatArray(db.size) { db[it].toFloat() }
+        val a = 1f - smoothing
+        for (k in db.indices) {
+            ema[k] += (db[k].toFloat() - ema[k]) * a
+            f.db[k] = ema[k]
+        }
         val n = noise()
         if (n != null) for (k in db.indices) f.floorDb[k] = n.profileDb[k].toFloat()
         f.binHz = spectrum.binHz

@@ -26,6 +26,7 @@
     <string name="badge_paused">пауза</string>
     <string name="badge_8s">8 с</string>
     <string name="badge_db">dB</string>
+    <string name="spectrum_legend">серая линия — шум комнаты</string>
     <string name="tap_to_pin">тап — закрепить ноту</string>
     <string name="target_prefix">цель</string>
     <string name="cupola">купол</string>

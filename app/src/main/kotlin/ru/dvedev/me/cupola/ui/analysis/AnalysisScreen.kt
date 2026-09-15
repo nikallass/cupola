@@ -43,6 +43,8 @@ import ru.dvedev.me.cupola.ui.theme.CupolaTheme
 fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: () -> Unit) {
     val liveMetrics by vm.uiMetrics.collectAsStateWithLifecycle()
     val metrics = if (vm.paused) vm.frozenMetrics else liveMetrics
+    val liveNote by vm.displayNote.collectAsStateWithLifecycle()
+    val displayNote = if (vm.paused) (vm.frozenNote ?: liveNote) else liveNote
     val session by vm.session.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     // Android 13+: ask for notification permission once, right before the first session
@@ -80,7 +82,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: (
             if (landscape) {
                 Row(Modifier.fillMaxSize()) {
                     NoteZone(
-                        metrics = metrics, session = session, targetNote = vm.targetNote, baselineDb = baseline,
+                        metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote, baselineDb = baseline,
                         notation = notation, accidentals = accidentals, hintsEnabled = settings.hints, pointsAnimation = settings.pointsAnimation,
                         onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onCalibrate,
                         modifier = Modifier.width(CupolaDimens.landscapeNoteWidth).fillMaxHeight(),
@@ -103,7 +105,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onCalibrate: (
                 }
             } else {
                 NoteZone(
-                    metrics = metrics, session = session, targetNote = vm.targetNote, baselineDb = baseline,
+                    metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote, baselineDb = baseline,
                     notation = notation, accidentals = accidentals, hintsEnabled = settings.hints, pointsAnimation = settings.pointsAnimation,
                     onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onCalibrate,
                     modifier = Modifier.fillMaxWidth(),

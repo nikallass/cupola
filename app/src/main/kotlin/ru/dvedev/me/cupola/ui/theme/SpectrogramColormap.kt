@@ -35,6 +35,6 @@ class SpectrogramColormap(stops: List<Color>) {
     companion object {
         const val SIZE = 256
         private const val KNEE = 0.55f
-        private const val GAMMA = 1.15
+        private const val GAMMA = 1.0 // the reference site maps linearly; 1.15 (mock) hid weak overtones
     }
 }

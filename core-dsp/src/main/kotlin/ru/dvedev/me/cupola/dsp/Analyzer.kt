@@ -10,6 +10,7 @@ import ru.dvedev.me.cupola.dsp.metrics.RingBand
 import ru.dvedev.me.cupola.dsp.metrics.RingMetrics
 import ru.dvedev.me.cupola.dsp.metrics.VibratoAnalyzer
 import ru.dvedev.me.cupola.dsp.metrics.VoiceType
+import ru.dvedev.me.cupola.dsp.pitch.HarmonicCombRefiner
 import ru.dvedev.me.cupola.dsp.pitch.PitchDetector
 import ru.dvedev.me.cupola.dsp.pitch.YinPitchDetector
 import ru.dvedev.me.cupola.dsp.score.Gate
@@ -58,6 +59,7 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
     val spectrum = PowerSpectrum(fftSize, sampleRate)
     val pitchDetector: PitchDetector = pitchDetector ?: YinPitchDetector(fftSize)
     val noise = NoiseFloor(spectrum.bins, hopSeconds)
+    val combRefiner = HarmonicCombRefiner()
     val harmonics = HarmonicTracker(maxHz = minOf(8000.0, spectrum.nyquistHz))
     val pitchStats = PitchStats(hopSeconds)
     val vibrato = VibratoAnalyzer(hopSeconds)
@@ -78,7 +80,14 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
         spectrum.compute(windowed)
         val spl = RingMetrics.splDbfs(raw)
         val voice = noise.update(spectrum.db, spl)
-        val pitch = if (voice) pitchDetector.estimate(raw, sampleRate) else ru.dvedev.me.cupola.dsp.pitch.PitchEstimate.NONE
+        val raw0 = if (voice) pitchDetector.estimate(raw, sampleRate) else ru.dvedev.me.cupola.dsp.pitch.PitchEstimate.NONE
+        // spectral comb check: fixes octave / bass-line slips of the time-domain detector
+        val pitch = if (raw0.found && noise.initialized) {
+            val r = combRefiner.refine(raw0, spectrum, noise)
+            ru.dvedev.me.cupola.dsp.pitch.PitchEstimate(r.f0Hz, r.confidence)
+        } else {
+            raw0
+        }
         val trusted = voice && pitch.found && pitch.confidence >= confidenceMin
         val f0 = if (trusted) pitch.f0Hz else 0.0
 

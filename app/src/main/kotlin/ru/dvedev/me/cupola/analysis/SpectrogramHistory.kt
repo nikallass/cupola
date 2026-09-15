@@ -21,7 +21,11 @@ class SpectrogramHistory(
     val columns: Int = 6000,
     val fMin: Double = 80.0,
     val fMax: Double = 8000.0,
-    val dynamicRangeDb: Float = 60f,
+    /** Fixed display range in dBFS (like the reference site: quiet stays faint, loud clips). */
+    val bottomDb: Float = -90f,
+    val topDisplayDb: Float = -20f,
+    /** Exponential smoothing of the spectrum between frames (site: analyser smoothingTimeConstant 0.5). */
+    val smoothing: Float = 0.5f,
     normSeconds: Double = 3.0,
     hopSeconds: Double = 0.01,
 ) : FrameListener {
@@ -33,8 +37,12 @@ class SpectrogramHistory(
     @Volatile var head: Long = 0
         private set
 
-    /** Current normalisation top in dB (levels 255 ↔ this). */
+    /** Running maximum of the last [normSeconds] (used by the spectrum's dB axis). */
     @Volatile var topDb: Float = -30f
+        private set
+
+    /** Smoothed dB spectrum of the latest frame (EMA), shared with the spectrum zone. */
+    @Volatile var smoothedDb: FloatArray = FloatArray(0)
         private set
 
     /** Log-spaced rows (default) or linear; switching clears the history (settings → «Шкала»). */
@@ -79,17 +87,26 @@ class SpectrogramHistory(
 
     override fun onFrame(metrics: FrameMetrics, spectrum: PowerSpectrum) {
         if (binHz != spectrum.binHz) prepare(spectrum)
-        val db = spectrum.db
-        var peak = -140.0
+        val raw = spectrum.db
+        // EMA in dB: |x| = smoothing·prev + (1−smoothing)·new
+        var sm = smoothedDb
+        if (sm.size != raw.size) {
+            sm = FloatArray(raw.size) { raw[it].toFloat() }
+            smoothedDb = sm
+        } else {
+            val a = 1f - smoothing
+            for (k in raw.indices) sm[k] += (raw[k].toFloat() - sm[k]) * a
+        }
+        val db = sm
+        var peak = -140f
         for (k in binMin..binMax) if (db[k] > peak) peak = db[k]
-        peaks[peakIdx] = peak.toFloat()
+        peaks[peakIdx] = peak
         peakIdx = (peakIdx + 1) % normFrames
         var top = -140f
         for (p in peaks) if (p > top) top = p
-        top = max(top, FLOOR_TOP_DB)
-        topDb = top
-        val bottom = top - dynamicRangeDb
-        val scale = 255f / dynamicRangeDb
+        topDb = max(top, FLOOR_TOP_DB)
+        val bottom = bottomDb
+        val scale = 255f / (topDisplayDb - bottomDb)
 
         val s = slot(head)
         val base = s * rows
@@ -97,7 +114,7 @@ class SpectrogramHistory(
             val lo = rowLo[r]
             val hi = rowHi[r]
             val v = if (hi > lo) {
-                var m = -200.0
+                var m = -200f
                 for (k in lo..hi) if (db[k] > m) m = db[k]
                 m
             } else {

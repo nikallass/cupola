@@ -6,8 +6,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.Text
@@ -43,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.dvedev.me.cupola.R
+import ru.dvedev.me.cupola.analysis.DisplayNote
 import ru.dvedev.me.cupola.analysis.HintKey
 import ru.dvedev.me.cupola.analysis.SessionUiState
 import ru.dvedev.me.cupola.dsp.FrameMetrics
@@ -64,10 +64,10 @@ import kotlin.math.min
  * press on the arc opens calibration. [compact] (landscape column) stacks the arc under
  * the note instead of beside it.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NoteZone(
     metrics: FrameMetrics?,
+    display: DisplayNote,
     session: SessionUiState,
     targetNote: Note?,
     baselineDb: Double?,
@@ -83,12 +83,25 @@ fun NoteZone(
     val c = CupolaTheme.colors
     val t = CupolaTheme.type
     val m = metrics
-    val voiced = m?.voiced == true
+    val voiced = display.voiced
     val score = m?.score ?: 0.0
     val glowMax = if (session.active && !session.paused) 0.32f else 0.12f
     val glow = (score / 0.7).coerceIn(0.0, 1.0).toFloat() * glowMax
 
-    val arcValue = if (m != null && voiced && !m.ringRatioNorm.isNaN() && baselineDb != null) formatDb(m.ringRatioNorm - baselineDb) + " dB" else "—"
+    // the arc shows the live ring measurement (SPEC §15.3 "заливка ∝ ring"), not the gated score
+    // component: relative to the baseline when calibrated, else the band's energy share; gated → dimmed
+    val relDb = if (baselineDb != null && !display.ringNormDb.isNaN()) display.ringNormDb - baselineDb else Double.NaN
+    val arcValue = when {
+        !relDb.isNaN() -> formatDb(relDb) + " dB"
+        !display.ringSharePct.isNaN() -> "%.0f %%".format(display.ringSharePct)
+        else -> "—"
+    }
+    val arcFill = when {
+        !relDb.isNaN() -> ((relDb + 3.0) / 9.0).coerceIn(0.0, 1.0)
+        !display.ringSharePct.isNaN() -> (display.ringSharePct / 25.0).coerceIn(0.0, 1.0)
+        else -> 0.0
+    }
+    val arcCounted = display.counted && baselineDb != null
     val arcModifier = Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { onLongPressArc() }) }
 
     Box(modifier.background(c.panel)) {
@@ -108,37 +121,33 @@ fun NoteZone(
                 },
             )
             val noteBlock: @Composable (Modifier) -> Unit = { mod ->
-                Column(mod.pointerInput(m?.note) { detectTapGestures(onTap = { onTapNote(if (voiced) m?.note else null) }) }) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.Bottom,
-                    ) {
-                        // headline: RU short name, or the scientific name when notation = EN
-                        val headline = when {
-                            !voiced -> "—"
-                            notation == NotationMode.EN -> NoteNames.en(m!!.note, accidentals)
-                            else -> NoteNames.ruShort(m!!.note, accidentals)
+                Column(mod.pointerInput(display.note) { detectTapGestures(onTap = { onTapNote(if (voiced) display.note else null) }) }) {
+                    // two fixed rows: the note alone, then scientific name + cents — nothing ever wraps or shifts
+                    val noteStyle = if (compact) t.note.copy(fontSize = 66.sp) else t.note
+                    val headline = when {
+                        !voiced -> "—"
+                        notation == NotationMode.EN -> NoteNames.en(display.note, accidentals)
+                        else -> NoteNames.ruShort(display.note, accidentals)
+                    }
+                    Text(
+                        headline,
+                        style = noteStyle,
+                        color = if (display.holding) c.mut else c.ink,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
+                        modifier = Modifier.height(if (compact) 70.dp else 88.dp),
+                    )
+                    Row(Modifier.height(44.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (voiced && notation == NotationMode.BOTH) {
+                            Text(NoteNames.en(display.note, accidentals), style = t.noteEn, color = c.dim, maxLines = 1)
                         }
-                        Text(
-                            headline,
-                            style = if (compact) t.note.copy(fontSize = 66.sp) else t.note,
-                            color = c.ink,
-                            maxLines = 1,
-                            overflow = TextOverflow.Clip,
-                            modifier = Modifier.align(Alignment.Bottom),
-                        )
                         if (voiced) {
-                            Row(Modifier.align(Alignment.Bottom), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                if (notation == NotationMode.BOTH) {
-                                    Text(NoteNames.en(m!!.note, accidentals), style = t.noteEn, color = c.dim, modifier = Modifier.padding(bottom = 6.dp))
-                                }
-                                Text(NoteNames.cents(m!!.cents), style = t.cents, color = centsColor(m.cents), modifier = Modifier.padding(bottom = 6.dp))
-                            }
+                            Text(NoteNames.cents(display.cents), style = t.cents, color = centsColor(display.cents), maxLines = 1)
                         }
                     }
-                    CentsScale(cents = if (voiced) m!!.cents else Double.NaN, Modifier.fillMaxWidth().height(24.dp).padding(top = 4.dp))
+                    CentsScale(cents = if (voiced) display.cents else Double.NaN, Modifier.fillMaxWidth().height(24.dp).padding(top = 4.dp))
                     Spacer(Modifier.height(6.dp))
-                    Text(subLine(m, targetNote, notation, accidentals), style = t.sub, color = c.dim, maxLines = if (compact) 2 else 1, overflow = TextOverflow.Ellipsis)
+                    Text(subLine(m, display, targetNote, notation, accidentals), style = t.sub, color = c.dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(20.dp))
                 }
             }
             if (compact) {
@@ -146,7 +155,7 @@ fun NoteZone(
                     noteBlock(Modifier.fillMaxWidth())
                     Spacer(Modifier.height(16.dp))
                     Box(Modifier.width(180.dp).align(Alignment.CenterHorizontally)) {
-                        CupolaArc(ring = m?.ring ?: 0.0, valueText = arcValue, modifier = arcModifier.fillMaxWidth())
+                        CupolaArc(ring = arcFill, counted = arcCounted, valueText = arcValue, modifier = arcModifier.fillMaxWidth())
                         if (pointsAnimation) PointsBurst(session.lastPoints, Modifier.matchParentSize())
                     }
                 }
@@ -158,7 +167,7 @@ fun NoteZone(
                     noteBlock(Modifier.weight(1f))
                     Spacer(Modifier.width(12.dp))
                     Box(Modifier.width(150.dp)) {
-                        CupolaArc(ring = m?.ring ?: 0.0, valueText = arcValue, modifier = arcModifier.fillMaxWidth())
+                        CupolaArc(ring = arcFill, counted = arcCounted, valueText = arcValue, modifier = arcModifier.fillMaxWidth())
                         if (pointsAnimation) PointsBurst(session.lastPoints, Modifier.matchParentSize())
                     }
                 }
@@ -169,11 +178,11 @@ fun NoteZone(
 }
 
 @Composable
-private fun subLine(m: FrameMetrics?, target: Note?, notation: NotationMode, accidentals: Accidentals): String {
-    if (m == null || !m.voiced) return stringResource(R.string.sub_silence)
+private fun subLine(m: FrameMetrics?, d: DisplayNote, target: Note?, notation: NotationMode, accidentals: Accidentals): String {
+    if (m == null || !d.voiced) return stringResource(R.string.sub_silence)
     val parts = mutableListOf<String>()
-    parts += formatHz(m.f0Hz) + " " + stringResource(R.string.unit_hz)
-    parts += stringResource(R.string.overtones_n, m.overtoneCount)
+    parts += formatHz(d.f0Hz) + " " + stringResource(R.string.unit_hz)
+    parts += stringResource(R.string.overtones_n, d.overtones)
     val v = m.vibrato
     parts += when (v.kind) {
         VibratoKind.VIBRATO -> stringResource(R.string.vibrato_fmt, v.rateHz, v.extentCents)
@@ -209,11 +218,15 @@ private fun CentsScale(cents: Double, modifier: Modifier = Modifier) {
     }
 }
 
-/** Half-circle «купол»: track in panel2, gold sweep ∝ ring, value underneath. */
+/**
+ * Half-circle «купол»: track in panel2, gold sweep ∝ the live ring measurement, value
+ * underneath. [counted] = all gates open (the ring is earning points); otherwise the sweep is dimmed.
+ */
 @Composable
-private fun CupolaArc(ring: Double, valueText: String, modifier: Modifier = Modifier) {
+private fun CupolaArc(ring: Double, counted: Boolean, valueText: String, modifier: Modifier = Modifier) {
     val c = CupolaTheme.colors
     val t = CupolaTheme.type
+    val sweep by animateFloatAsState(targetValue = ring.toFloat(), animationSpec = tween(180), label = "ring")
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Label(stringResource(R.string.cupola))
         Canvas(Modifier.fillMaxWidth().height(70.dp)) {
@@ -222,8 +235,8 @@ private fun CupolaArc(ring: Double, valueText: String, modifier: Modifier = Modi
             val topLeft = Offset((size.width - d) / 2, stroke / 2)
             val arcSize = Size(d, d)
             drawArc(c.panel2, startAngle = 180f, sweepAngle = 180f, useCenter = false, topLeft = topLeft, size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
-            if (ring > 0.005) {
-                drawArc(c.gold, startAngle = 180f, sweepAngle = (180 * ring).toFloat(), useCenter = false, topLeft = topLeft, size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+            if (sweep > 0.005f) {
+                drawArc(if (counted) c.gold else c.gold.copy(alpha = 0.45f), startAngle = 180f, sweepAngle = 180f * sweep, useCenter = false, topLeft = topLeft, size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
             }
         }
         Text(valueText, style = t.ringValue, color = c.goldInk, maxLines = 1, modifier = Modifier.padding(top = 2.dp))

@@ -79,6 +79,8 @@ fun SpectrumZone(
                 Label(stringResource(R.string.zone_spectrum))
                 Spacer(Modifier.width(8.dp))
                 Badge(stringResource(R.string.badge_db))
+                Spacer(Modifier.width(10.dp))
+                Label(stringResource(R.string.spectrum_legend))
             },
             right = {
                 Label(
@@ -166,6 +168,19 @@ fun SpectrumZone(
             fill.lineTo(gutterL + plotW, gutterT + plotH)
             fill.close()
             clipRect(gutterL, gutterT, gutterL + plotW, gutterT + plotH) {
+                // harmonic series of the sung note: vertical dashed lines (reference site)
+                if (frame.voiced && frame.f0Hz > 0) {
+                    val dash = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 4.dp.toPx()))
+                    var k = 1
+                    while (k * frame.f0Hz < F_MAX && k <= 64) {
+                        val hz = k * frame.f0Hz
+                        if (hz >= F_MIN) {
+                            val x = xOf(hz)
+                            drawLine(c.ink.copy(alpha = 0.35f), Offset(x, gutterT), Offset(x, gutterT + plotH), strokeWidth = 1f, pathEffect = dash)
+                        }
+                        k++
+                    }
+                }
                 drawPath(fill, c.gold.copy(alpha = 0.22f))
                 drawPath(curve, c.gold, style = Stroke(1.5.dp.toPx(), join = StrokeJoin.Bevel, cap = StrokeCap.Butt))
                 // noise floor: thin solid line (a dash effect costs more GPU than the whole curve)

@@ -23,6 +23,7 @@
     <string name="badge_paused">paused</string>
     <string name="badge_8s">8 s</string>
     <string name="badge_db">dB</string>
+    <string name="spectrum_legend">grey line — room noise</string>
     <string name="tap_to_pin">tap to pin the note</string>
     <string name="target_prefix">target</string>
     <string name="cupola">cupola</string>
