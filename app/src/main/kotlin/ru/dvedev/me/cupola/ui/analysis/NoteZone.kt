@@ -209,7 +209,9 @@ private fun subLine(m: FrameMetrics?, d: DisplayNote, target: Note?, notation: N
     if (m == null || !d.voiced) return stringResource(R.string.sub_silence)
     val parts = mutableListOf<String>()
     parts += formatHz(d.f0Hz) + " " + stringResource(R.string.unit_hz)
-    parts += stringResource(R.string.overtones_n, d.overtones)
+    // overall voice level above the noise, to compare with the cupola's dB (owner 2026‑09‑16);
+    // overtones and the target left this line — the graphs and the header show them
+    if (!d.voiceDb.isNaN()) parts += "%.0f dB".format(d.voiceDb).replace("-", "−")
     val v = m.vibrato
     parts += when (v.kind) {
         VibratoKind.VIBRATO -> stringResource(R.string.vibrato_fmt, v.rateHz, v.extentCents)
@@ -218,7 +220,6 @@ private fun subLine(m: FrameMetrics?, d: DisplayNote, target: Note?, notation: N
         VibratoKind.STRAIGHT -> stringResource(R.string.vibrato_straight)
         VibratoKind.NONE -> "…"
     }
-    if (target != null) parts += stringResource(R.string.target_prefix) + " " + (if (notation == NotationMode.EN) NoteNames.en(target, accidentals) else NoteNames.ruShort(target, accidentals))
     return parts.joinToString(" · ")
 }
 

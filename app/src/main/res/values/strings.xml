@@ -146,6 +146,9 @@
     <string name="settings_vibrato_max_hz">Вибрато: частота до</string>
     <string name="settings_vibrato_max_cents">Вибрато: размах до</string>
     <string name="settings_vibrato_help">Границы подписи под нотой. Размах меньше «прямого тона» — прямой тон. Частота выше верхней — тремоло. Частота ниже нижней или размах больше «вибрато: размах до» — качание. Остальное — вибрато. Качание и тремоло снижают «ровность» на 40 %%.</string>
+    <string name="settings_freq_min">Частоты: от</string>
+    <string name="settings_freq_max">Частоты: до</string>
+    <string name="settings_freq_range_help">Какой диапазон частот показывают спектрограмма и спектр. Басы опускаются до 80 Гц и ниже — уменьшите нижнюю границу; верхняя нужна, чтобы видеть обертоны выше купола. Смена диапазона очищает спектрограмму.</string>
     <string name="settings_display_avg">Сглаживание показаний</string>
     <string name="settings_display_avg_help">За сколько последних миллисекунд усредняются бегунок центов, число центов и частота. Больше — плавнее, но с задержкой; 0 — без сглаживания.</string>
     <string name="settings_noise_window">Окно шума</string>

@@ -26,6 +26,8 @@ data class DisplayNote(
     val ringSharePct: Double = Double.NaN,
     /** Band hump over its flanks, dB, smoothed the same way; NaN without voice. */
     val humpDb: Double = Double.NaN,
+    /** Voice level above the noise, dB, smoothed the same way; NaN without voice. */
+    val voiceDb: Double = Double.NaN,
     /** Audible overtones, typical value over the window. */
     val overtones: Int = 0,
     /** True when the ring was being counted (all gates open) for most of the window. */
@@ -78,6 +80,7 @@ class NoteDisplaySmoother(
     private var candidate = -1
     private var candidateSince = 0.0
     private var humpEma = Double.NaN
+    private var voiceDbEma = Double.NaN
     private var shareEma = Double.NaN
     private var ring = 0.0
     private var overtoneSum = 0
@@ -100,6 +103,8 @@ class NoteDisplaySmoother(
             if (metrics.gate == ru.dvedev.me.cupola.dsp.score.Gate.OPEN) openFrames++ else gateCounts[metrics.gate.ordinal]++
             val h = metrics.humpDb
             if (!h.isNaN()) humpEma = if (humpEma.isNaN()) h else humpEma + (h - humpEma) * emaAlpha
+            val vdb = metrics.voiceDb
+            if (!vdb.isNaN()) voiceDbEma = if (voiceDbEma.isNaN()) vdb else voiceDbEma + (vdb - voiceDbEma) * emaAlpha
             shareEma = if (shareEma.isNaN()) metrics.ringSharePct else shareEma + (metrics.ringSharePct - shareEma) * emaAlpha
         }
         ring = metrics.ring
@@ -179,9 +184,9 @@ class NoteDisplaySmoother(
             }
             val centsOut = if (cnt > 0) cSum / cnt else centsNow
             val f0Out = if (cnt > 0) fSum / cnt else f0Now
-            _state.value = DisplayNote(voiced = true, note = Note(best), cents = centsOut, f0Hz = f0Out, holding = false, ring = ring, ringSharePct = shareEma, humpDb = humpEma, overtones = overtones, counted = counted, gate = blocking)
+            _state.value = DisplayNote(voiced = true, note = Note(best), cents = centsOut, f0Hz = f0Out, holding = false, ring = ring, ringSharePct = shareEma, humpDb = humpEma, voiceDb = voiceDbEma, overtones = overtones, counted = counted, gate = blocking)
         } else if (previous.voiced && metrics.timeSec - lastVoicedAt < holdSeconds) {
-            _state.value = previous.copy(holding = true, ring = ring, ringSharePct = shareEma, humpDb = humpEma, counted = counted, gate = blocking)
+            _state.value = previous.copy(holding = true, ring = ring, ringSharePct = shareEma, humpDb = humpEma, voiceDb = voiceDbEma, counted = counted, gate = blocking)
         } else {
             _state.value = DisplayNote(ring = ring, ringSharePct = if (metrics.voice) shareEma else Double.NaN, humpDb = if (metrics.voice) humpEma else Double.NaN, counted = counted, gate = blocking)
         }

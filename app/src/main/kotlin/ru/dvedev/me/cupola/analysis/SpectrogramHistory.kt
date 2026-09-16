@@ -19,8 +19,8 @@ import kotlin.math.roundToInt
 class SpectrogramHistory(
     val rows: Int = 320,
     val columns: Int = 6000,
-    val fMin: Double = 80.0,
-    val fMax: Double = 8000.0,
+    fMin: Double = 80.0,
+    fMax: Double = 8000.0,
     /** Fixed display range in dBFS (like the reference site: quiet stays faint, loud clips). */
     val bottomDb: Float = -90f,
     val topDisplayDb: Float = -20f,
@@ -44,6 +44,20 @@ class SpectrogramHistory(
     /** Smoothed dB spectrum of the latest frame (EMA), shared with the spectrum zone. */
     @Volatile var smoothedDb: FloatArray = FloatArray(0)
         private set
+
+    /** Displayed frequency range, Hz (advanced settings); changing it clears the history. */
+    @Volatile var fMin: Double = fMin
+        private set
+    @Volatile var fMax: Double = fMax
+        private set
+
+    fun setRange(lo: Double, hi: Double) {
+        if (lo == fMin && hi == fMax) return
+        fMin = lo
+        fMax = hi
+        binHz = 0.0 // forces prepare() on the next frame
+        clear()
+    }
 
     /** Log-spaced rows (default) or linear; switching clears the history (settings → «Шкала»). */
     @Volatile var logScale: Boolean = true
@@ -70,7 +84,7 @@ class SpectrogramHistory(
     private var rowCenter = FloatArray(0)
     private var binMin = 0
     private var binMax = 0
-    private val logSpan = ln(fMax / fMin)
+    private val logSpan: Double get() = ln(fMax / fMin)
 
     fun slot(column: Long): Int = (column % columns).toInt()
 

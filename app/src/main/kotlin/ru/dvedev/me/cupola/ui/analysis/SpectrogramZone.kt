@@ -187,7 +187,7 @@ fun SpectrogramZone(
                     drawTrace(history, end, visible, gutterL, colW, plotH, c, thresholds, tracePaths)
                 }
                 // frequency axis
-                val ticks = if (history.logScale) listOf(100, 200, 400, 800, 1600, 3200, 6400) else listOf(1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000)
+                val ticks = frequencyTicks(history.fMin, history.fMax, history.logScale)
                 for (hz in ticks) {
                     val y = history.yFraction(hz.toDouble()) * plotH
                     drawLine(c.line, Offset(gutterL - 3.dp.toPx(), y), Offset(gutterL, y), strokeWidth = 1f)

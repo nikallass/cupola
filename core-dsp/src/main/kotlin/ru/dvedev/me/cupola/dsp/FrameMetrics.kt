@@ -40,6 +40,8 @@ data class FrameMetrics(
     val steady: Double,
     val score: Double,
     val streakSeconds: Double,
+    /** Voice level with the background noise subtracted, dB — comparable with the cupola figures. */
+    val voiceDb: Double = Double.NaN,
 ) {
     /** Voice present and pitch trusted (`confidence ≥ 0.7`). */
     val voiced: Boolean get() = voice && gate != Gate.LOW_CONFIDENCE && f0Hz > 0

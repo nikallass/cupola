@@ -51,3 +51,22 @@ fun DrawScope.drawLabel(measurer: TextMeasurer, text: String, topLeft: Offset, s
     if (topLeft.x + m.size.width > size.width || topLeft.y + m.size.height > size.height) return
     drawText(measurer, text, topLeft, style)
 }
+
+/**
+ * Frequency axis ticks for [fMin]…[fMax]: octaves of 100 Hz on a log axis (plus the lower
+ * bound itself when it is not close to a tick, so «80» shows for basses), round kHz on a linear one.
+ */
+fun frequencyTicks(fMin: Double, fMax: Double, log: Boolean): List<Int> {
+    val out = ArrayList<Int>()
+    if (log) {
+        var f = 25.0
+        while (f <= fMax) { if (f >= fMin) out += f.toInt(); f *= 2 }
+        val lo = fMin.toInt()
+        if (out.isEmpty() || out.first() / fMin > 1.3) out.add(0, lo)
+    } else {
+        val step = if (fMax - fMin > 10_000) 2000 else 1000
+        var f = ((fMin / step).toInt() + 1) * step
+        while (f < fMax) { out += f; f += step }
+    }
+    return out
+}

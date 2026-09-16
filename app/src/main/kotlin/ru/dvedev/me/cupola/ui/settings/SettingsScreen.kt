@@ -188,6 +188,10 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onLanguageChanged: () ->
                     onDecrement = { update { it.copy(vibratoMaxHz = (it.vibratoMaxHz - 0.1).coerceAtLeast(it.vibratoMinHz + 0.5)) } }, onIncrement = { update { it.copy(vibratoMaxHz = (it.vibratoMaxHz + 0.1).coerceAtMost(15.0)) } })
                 StepperRow(stringResource(R.string.settings_vibrato_max_cents), stringResource(R.string.settings_vibrato_help), "±${s.vibratoMaxCents} ¢",
                     onDecrement = { update { it.copy(vibratoMaxCents = (it.vibratoMaxCents - 5).coerceAtLeast(it.straightMaxCents + 5)) } }, onIncrement = { update { it.copy(vibratoMaxCents = (it.vibratoMaxCents + 5).coerceAtMost(300)) } })
+                StepperRow(stringResource(R.string.settings_freq_min), stringResource(R.string.settings_freq_range_help), "${s.freqMinHz} " + stringResource(R.string.unit_hz),
+                    onDecrement = { update { it.copy(freqMinHz = (it.freqMinHz - 10).coerceAtLeast(30)) } }, onIncrement = { update { it.copy(freqMinHz = (it.freqMinHz + 10).coerceAtMost(it.freqMaxHz / 8)) } })
+                StepperRow(stringResource(R.string.settings_freq_max), stringResource(R.string.settings_freq_range_help), "${s.freqMaxHz} " + stringResource(R.string.unit_hz),
+                    onDecrement = { update { it.copy(freqMaxHz = (it.freqMaxHz - 500).coerceAtLeast(maxOf(2000, it.freqMinHz * 8))) } }, onIncrement = { update { it.copy(freqMaxHz = (it.freqMaxHz + 500).coerceAtMost(20000)) } })
                 StepperRow(stringResource(R.string.settings_display_avg), stringResource(R.string.settings_display_avg_help), "${s.displayAveragingMs} " + stringResource(R.string.unit_ms),
                     onDecrement = { update { it.copy(displayAveragingMs = (it.displayAveragingMs - 25).coerceAtLeast(0)) } }, onIncrement = { update { it.copy(displayAveragingMs = (it.displayAveragingMs + 25).coerceAtMost(1000)) } })
                 StepperRow(stringResource(R.string.settings_noise_window), stringResource(R.string.settings_noise_window_help), "${s.noiseWindowMinutes} " + stringResource(R.string.unit_min),

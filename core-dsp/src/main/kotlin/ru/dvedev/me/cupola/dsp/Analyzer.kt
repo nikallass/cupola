@@ -129,6 +129,7 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
             ringSharePct = ringMeasure.ringSharePct,
             peakSprDb = ringMeasure.peakSprDb,
             humpDb = ringMeasure.humpDb,
+            voiceDb = ringMeasure.voiceDb,
             overtoneCount = overtoneCount,
             harmonics = if (trusted) hset.snapshot() else emptyList(),
             pitchSd = pitchStats.pitchSd,

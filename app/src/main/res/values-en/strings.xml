@@ -138,6 +138,9 @@
     <string name="settings_vibrato_max_hz">Vibrato: rate up to</string>
     <string name="settings_vibrato_max_cents">Vibrato: extent up to</string>
     <string name="settings_vibrato_help">Borders of the label under the note. Extent below the straight-tone value — straight tone. Rate above the upper border — tremolo. Rate below the lower border or extent above the vibrato extent — wobble. Everything else — vibrato. Wobble and tremolo lower "steadiness" by 40 %%.</string>
+    <string name="settings_freq_min">Frequencies: from</string>
+    <string name="settings_freq_max">Frequencies: up to</string>
+    <string name="settings_freq_range_help">The frequency range the spectrogram and the spectrum show. Basses go down to 80 Hz and below — lower the bottom; the top lets you see overtones above the cupola. Changing the range clears the spectrogram.</string>
     <string name="settings_display_avg">Readout smoothing</string>
     <string name="settings_display_avg_help">Over how many recent milliseconds the cents pin, the cents value and the frequency are averaged. More — smoother but delayed; 0 — no smoothing.</string>
     <string name="settings_noise_window">Noise window</string>

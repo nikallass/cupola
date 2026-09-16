@@ -86,6 +86,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit) {
     val notation = settings.notation
     val accidentals = settings.accidentals
     vm.spectrogram.logScale = settings.logFrequencyAxis
+    vm.spectrogram.setRange(settings.freqMinHz.toDouble(), settings.freqMaxHz.toDouble())
     // zones fold by a tap on their header (owner 2026‑09‑16): graphs full-screen, or the note alone
     var noteFolded by rememberSaveable { mutableStateOf(false) }
     var spectrogramFolded by rememberSaveable { mutableStateOf(false) }
@@ -145,6 +146,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit) {
                 SpectrumZone(
                     snapshot = vm.spectrum, band = band, sharePct = displayNote.ringSharePct, humpDb = displayNote.humpDb,
                     paused = vm.paused, topDb = { vm.spectrogram.topDb }, logScale = settings.logFrequencyAxis,
+                    fMin = settings.freqMinHz.toDouble(), fMax = settings.freqMaxHz.toDouble(),
                     showLegend = legend, collapsed = spectrumFolded, onToggle = { spectrumFolded = !spectrumFolded },
                     modifier = mod,
                 )

@@ -53,6 +53,9 @@ data class Settings(
     val noiseWindowMinutes: Int = 3,
     /** Averaging of the note readouts (cents pin, cents, Hz), milliseconds (default 100). */
     val displayAveragingMs: Int = 100,
+    /** Displayed frequency range of the spectrogram and the spectrum, Hz (basses reach 80 Hz and below). */
+    val freqMinHz: Int = 60,
+    val freqMaxHz: Int = 8000,
     val ringWeight: Double = ScoreWeights.RING,
     val pitchWeight: Double = ScoreWeights.PITCH,
     val steadyWeight: Double = ScoreWeights.STEADY,

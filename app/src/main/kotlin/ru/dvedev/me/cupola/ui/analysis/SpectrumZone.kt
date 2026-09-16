@@ -36,8 +36,6 @@ import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.pow
 
-private const val F_MIN = 80.0
-private const val F_MAX = 8000.0
 private const val DB_SPAN = 70f
 /** Horizontal resolution of the curve, px per point; every pixel is too much for the E11 GPU. */
 private const val PX_STEP = 2
@@ -57,6 +55,9 @@ fun SpectrumZone(
     /** Running maximum of the spectrogram normalisation; the dB axis follows it. */
     topDb: () -> Float,
     logScale: Boolean = true,
+    /** Displayed frequency range, Hz (advanced settings). */
+    fMin: Double = 80.0,
+    fMax: Double = 8000.0,
     /** The «grey line = room noise» legend; off on narrow screens where it collides with the readout. */
     showLegend: Boolean = true,
     collapsed: Boolean = false,
@@ -64,6 +65,8 @@ fun SpectrumZone(
     modifier: Modifier = Modifier,
 ) {
     val c = CupolaTheme.colors
+    @Suppress("LocalVariableName") val F_MIN = fMin
+    @Suppress("LocalVariableName") val F_MAX = fMax
     val measurer = rememberTextMeasurer(cacheSize = 128) // ~25 distinct labels per frame; the default 8 thrashes
     val axisStyle = CupolaTheme.type.axis
     val tick = remember { mutableLongStateOf(0L) }
@@ -123,7 +126,7 @@ fun SpectrumZone(
                 val m = measurer.measure(label, axisStyle)
                 drawLabel(measurer, label, Offset(gutterL - 6.dp.toPx() - m.size.width, y - m.size.height / 2), axisStyle.copy(color = c.dim))
             }
-            for (hz in if (logScale) listOf(100, 200, 400, 800, 1600, 3200, 6400) else listOf(1000, 2000, 3000, 4000, 5000, 6000, 7000)) {
+            for (hz in frequencyTicks(F_MIN, F_MAX, logScale)) {
                 val x = xOf(hz.toDouble())
                 drawLine(c.line, Offset(x, gutterT + plotH), Offset(x, gutterT + plotH + 3.dp.toPx()), strokeWidth = 1f)
                 val label = formatKHz(hz)

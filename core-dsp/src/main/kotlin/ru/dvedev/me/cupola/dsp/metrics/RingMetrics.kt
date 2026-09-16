@@ -49,6 +49,8 @@ data class RingMeasure(
     val splDbfs: Double,
     /** Band peak minus the mean of the flank peaks just below and above it, dB: > 0 is a hump. */
     val humpDb: Double,
+    /** Voice level: energy 80–8000 Hz above the noise profile, dB (same scale as the spectrum). */
+    val voiceDb: Double = Double.NaN,
 )
 
 object RingMetrics {
@@ -80,7 +82,7 @@ object RingMetrics {
         val lower = peakDb(spectrum, band.loHz - FLANK_GAP_HZ - FLANK_WIDTH_HZ, band.loHz - FLANK_GAP_HZ, noise)
         val upper = peakDb(spectrum, band.hiHz + FLANK_GAP_HZ, band.hiHz + FLANK_GAP_HZ + FLANK_WIDTH_HZ, noise)
         val hump = peakDb(spectrum, band.loHz, band.hiHz, noise) - 0.5 * (lower + upper)
-        return RingMeasure(ringRatio, share, spr, splDbfs, hump)
+        return RingMeasure(ringRatio, share, spr, splDbfs, hump, 10.0 * log10(max(total, FLOOR)))
     }
 
     private fun noiseLinear(noise: NoiseFloor, bin: Int): Double = NOISE_MARGIN * 10.0.pow(noise.floorAt(bin) / 10.0)
