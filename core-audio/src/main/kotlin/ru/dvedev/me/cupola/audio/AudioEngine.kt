@@ -48,6 +48,11 @@ class AudioEngine(
     private var analysisThread: Thread? = null
 
     private val _state = MutableStateFlow<EngineState>(EngineState.Idle)
+
+    /** True while the microphone delivers digital silence or the client is silenced by policy (see the watchdog in [start]). */
+    private val _inputSilent = MutableStateFlow(false)
+    val inputSilent: StateFlow<Boolean> = _inputSilent
+    @Volatile private var lastPreference: AudioSourcePreference = AudioSourcePreference.AUTO
     val state: StateFlow<EngineState> = _state.asStateFlow()
 
     private val _metrics = MutableStateFlow<FrameMetrics?>(null)
@@ -95,6 +100,8 @@ class AudioEngine(
     @Synchronized
     fun start(preference: AudioSourcePreference = AudioSourcePreference.AUTO): Boolean {
         if (running.get()) return true
+        lastPreference = preference
+        _inputSilent.value = false
         val status = try {
             capture.open(preference)
         } catch (e: AudioCaptureException) {
@@ -113,6 +120,14 @@ class AudioEngine(
         captureThread = Thread({
             Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
             val chunk = FloatArray(hop)
+            // Silence watchdog: Android hands a client zeros instead of an error when another app
+            // owns the microphone or when the client was created before the runtime grant reached
+            // the audio policy (fresh install on OnePlus, 2026‑09‑16). After SILENCE_REOPEN_SECONDS
+            // of digital silence, or as soon as the client reports itself silenced, the stream is
+            // closed and opened again — a new client gets a fresh policy decision.
+            var silentChunks = 0
+            var lastReopenNanos = 0L
+            var chunksSinceCheck = 0
             try {
                 capture.start()
                 while (running.get()) {
@@ -122,6 +137,30 @@ class AudioEngine(
                         ring.write(chunk, 0, n)
                         overruns = ring.overruns
                         samplesReady.release()
+                        var zero = true
+                        for (i in 0 until n) if (chunk[i] != 0f) { zero = false; break }
+                        silentChunks = if (zero) silentChunks + 1 else 0
+                        val silentSeconds = silentChunks * hop.toDouble() / status.sampleRate
+                        val policySilenced = ++chunksSinceCheck >= 50 && run { chunksSinceCheck = 0; capture.isClientSilenced() }
+                        val silent = silentSeconds >= SILENCE_FLAG_SECONDS || policySilenced
+                        if (silent != _inputSilent.value) {
+                            _inputSilent.value = silent
+                            Log.w(TAG, if (silent) "input silent: zeros for ${"%.1f".format(silentSeconds)} s, policySilenced=$policySilenced" else "input alive again")
+                        }
+                        val now = System.nanoTime()
+                        if ((silentSeconds >= SILENCE_REOPEN_SECONDS || policySilenced) && now - lastReopenNanos > REOPEN_INTERVAL_NS) {
+                            lastReopenNanos = now
+                            silentChunks = 0
+                            Log.w(TAG, "reopening the microphone after silence (policySilenced=$policySilenced)")
+                            try {
+                                capture.stop()
+                                val st = capture.open(lastPreference)
+                                if (st.sampleRate != status.sampleRate) Log.w(TAG, "reopened at ${st.sampleRate} Hz instead of ${status.sampleRate} Hz")
+                                capture.start()
+                            } catch (e: AudioCaptureException) {
+                                Log.e(TAG, "reopen failed", e)
+                            }
+                        }
                     } else if (n < 0) {
                         readErrors++
                         if (!running.get()) break
@@ -189,6 +228,11 @@ class AudioEngine(
     val isRunning: Boolean get() = running.get()
 
     companion object {
+        /** Digital silence this long flags the input on screen … */
+        const val SILENCE_FLAG_SECONDS = 1.5
+        /** … and this long makes the engine reopen the stream (then at most every REOPEN_INTERVAL_NS). */
+        const val SILENCE_REOPEN_SECONDS = 2.0
+        const val REOPEN_INTERVAL_NS = 4_000_000_000L
         private const val TAG = "CupolaAudio"
         private const val STATS_INTERVAL_NS = 60_000_000_000L
     }

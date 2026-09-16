@@ -51,6 +51,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
     val liveNote by vm.displayNote.collectAsStateWithLifecycle()
     val displayNote = if (vm.paused) (vm.frozenNote ?: liveNote) else liveNote
     val session by vm.session.state.collectAsStateWithLifecycle()
+    val inputSilent by vm.inputSilent.collectAsStateWithLifecycle()
     val context = LocalContext.current
     // Android 13+: ask for notification permission once, right before the first session
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { vm.startSession() }
@@ -93,7 +94,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
                 NoteZone(
                     metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote,
                     notation = notation, accidentals = accidentals, hintsEnabled = settings.hints, pointsAnimation = settings.pointsAnimation,
-                    onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onRoomNoise, onGiveTone = { vm.playTargetTone() },
+                    onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onRoomNoise, onGiveTone = { vm.playTargetTone() }, inputSilent = inputSilent,
                     modifier = mod, compact = compact,
                     collapsed = noteFolded, onToggle = { noteFolded = !noteFolded },
                 )

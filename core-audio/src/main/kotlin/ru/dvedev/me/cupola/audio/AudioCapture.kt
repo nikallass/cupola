@@ -93,6 +93,16 @@ class AudioCapture(context: Context) {
         record?.let { if (it.recordingState == AudioRecord.RECORDSTATE_RECORDING) it.stop() }
     }
 
+    /**
+     * True when the system hands this client silence by policy (another app owns the mic, or the
+     * client was created before the runtime grant reached the audio policy — the OnePlus
+     * first-launch case). Android 10+; false when unknown.
+     */
+    fun isClientSilenced(): Boolean {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return false
+        return runCatching { record?.activeRecordingConfiguration?.isClientSilenced == true }.getOrDefault(false)
+    }
+
     fun close() {
         record?.release()
         record = null

@@ -169,6 +169,10 @@
     <string name="settings_w_pitch">Вес: точность</string>
     <string name="settings_w_steady">Вес: ровность</string>
     <string name="settings_weights_help">Доли показателей в общем балле. Нормируются на сумму.</string>
+    <string name="settings_log">Лог приложения</string>
+    <string name="settings_log_help">Сохраняет в файл журнал этого запуска: устройство, версия, открытие микрофона, ошибки. Файл никуда не отправляется — пришлите его, если что-то не работает.</string>
+    <string name="settings_log_save">Сохранить лог</string>
+    <string name="mic_silent">нет сигнала с микрофона</string>
     <string name="settings_reset_advanced">Сбросить</string>
     <string name="settings_tokens">Палитра</string>
 

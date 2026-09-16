@@ -22,7 +22,9 @@ import kotlin.random.Random
  * - **partials decay faster the higher they are** — partial k dies with a time constant
  *   `τ₁ / (1 + 0.12·k^1.6)`, so the note starts bright and mellows;
  * - **hammer attack** — a 15 ms raised-cosine rise plus a quiet burst of noise for the hammer's thump;
- * - **two strings per note**, detuned by ±1.5 ¢, whose beating gives the sustain its shimmer.
+ * - **two (treble: three) strings per note**, detuned by about ±1.5 ¢, whose beating gives the sustain its shimmer;
+ * - **register**: inharmonicity, hammer brightness and decay all follow the pitch, so a treble
+ *   note is percussive and metallic while the bass sings on.
  */
 class ReferenceTone(private val sampleRate: Int = 48_000) {
     @Volatile private var track: AudioTrack? = null
@@ -57,19 +59,30 @@ class ReferenceTone(private val sampleRate: Int = 48_000) {
         val n = (seconds * sampleRate).toInt()
         val out = DoubleArray(n)
         val nyquist = sampleRate / 2.0
-        val strings = doubleArrayOf(2.0.pow(-1.5 / 1200), 2.0.pow(1.5 / 1200))
+        // register (owner 2026‑09‑16: the treble sounded like a toy flute): real pianos have
+        // stiffer, shorter strings up there — more inharmonicity, a harder hammer (brighter
+        // spectrum), three strings, and a much faster decay with a percussive start
+        val reg = (hz / 220.0).coerceIn(0.25, 8.0)
+        val b = (inharmonicity * reg.pow(1.3)).coerceIn(0.00015, 0.004)
+        val tau1 = fundamentalDecay * reg.pow(-0.7)
+        val tilt = if (reg >= 1.0) 1.0 else 1.25
+        val strings = if (hz >= 250.0) doubleArrayOf(2.0.pow(-1.2 / 1200), 1.0, 2.0.pow(1.4 / 1200)) else doubleArrayOf(2.0.pow(-1.5 / 1200), 2.0.pow(1.5 / 1200))
+        val strike = 1.0 / 8 // hammer strikes an eighth along the string: the 8th partial and its multiples are weak
         for (k in 1..partials) {
-            val fk = k * hz * sqrt(1 + inharmonicity * k * k)
+            val fk = k * hz * sqrt(1 + b * k * k)
             if (fk >= nyquist * 0.9) break
-            // spectral tilt with a softer 2nd/3rd partial than a sawtooth and a little randomness per partial
-            val amp = 1.0 / k.toDouble().pow(1.25) * (if (k % 2 == 0) 0.85 else 1.0)
-            val tau = fundamentalDecay / (1 + 0.12 * k.toDouble().pow(1.6))
+            val comb = kotlin.math.abs(sin(PI * k * strike)).coerceAtLeast(0.15)
+            val felt = 1.0 / (1.0 + (fk / 5500.0).pow(2)) // the felt low-passes the excitation
+            val amp = comb * felt / k.toDouble().pow(tilt)
+            val tau = tau1 / (1 + 0.12 * k.toDouble().pow(1.6))
             for (s in strings) {
                 val w = 2 * PI * fk * s
                 val phase = Random(k * 31 + s.hashCode()).nextDouble() * 2 * PI
                 for (i in 0 until n) {
                     val t = i.toDouble() / sampleRate
-                    out[i] += amp * exp(-t / tau) * sin(w * t + phase)
+                    // double decay of coupled strings: a quick "prompt" sound and a slower "after" sound
+                    val env = 0.65 * exp(-t / tau) + 0.35 * exp(-t / (2.5 * tau))
+                    out[i] += amp * env * sin(w * t + phase)
                 }
             }
         }

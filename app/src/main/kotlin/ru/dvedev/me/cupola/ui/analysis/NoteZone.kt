@@ -82,6 +82,8 @@ fun NoteZone(
     onLongPressArc: () -> Unit,
     /** «Дать тон» for the pinned note (owner 2026‑09‑16); shown only while a target is pinned. */
     onGiveTone: () -> Unit = {},
+    /** The microphone is delivering silence (busy or silenced by the system). */
+    inputSilent: Boolean = false,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
     collapsed: Boolean = false,
@@ -138,6 +140,7 @@ fun NoteZone(
                             }
                         }
                         collapsed -> Box(Modifier.height(20.dp), contentAlignment = Alignment.CenterEnd) { Text("—", style = t.stats, color = c.dim, maxLines = 1) }
+                        inputSilent -> Label(stringResource(R.string.mic_silent), color = c.bad)
                         gateText != null -> Label(gateText, color = c.warn)
                         targetNote != null -> Label(stringResource(R.string.target_prefix) + " " + NoteNames.label(targetNote, notation, accidentals).joined)
                         else -> Label(stringResource(R.string.tap_to_pin))

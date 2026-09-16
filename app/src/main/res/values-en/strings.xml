@@ -161,6 +161,10 @@
     <string name="settings_w_pitch">Weight: accuracy</string>
     <string name="settings_w_steady">Weight: steadiness</string>
     <string name="settings_weights_help">Shares of the indicators in the total score. Normalised to their sum.</string>
+    <string name="settings_log">App log</string>
+    <string name="settings_log_help">Saves this run\'s log to a file: device, version, microphone opening, errors. The file is not sent anywhere — send it along when something does not work.</string>
+    <string name="settings_log_save">Save log</string>
+    <string name="mic_silent">no signal from the microphone</string>
     <string name="settings_reset_advanced">Reset</string>
     <string name="settings_tokens">Palette</string>
 

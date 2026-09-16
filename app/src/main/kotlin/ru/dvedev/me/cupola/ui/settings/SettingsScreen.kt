@@ -1,6 +1,10 @@
 package ru.dvedev.me.cupola.ui.settings
 
 import androidx.compose.foundation.background
+import ru.dvedev.me.cupola.diagnostics.LogExport
+import kotlinx.coroutines.Dispatchers
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -201,6 +205,13 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onRoomNoise: () -> Unit,
                     onDecrement = { update { it.copy(pitchWeight = (it.pitchWeight - 0.05).coerceAtLeast(0.0)) } }, onIncrement = { update { it.copy(pitchWeight = (it.pitchWeight + 0.05).coerceAtMost(1.0)) } })
                 StepperRow(stringResource(R.string.settings_w_steady), stringResource(R.string.settings_weights_help), "%.2f".format(s.steadyWeight),
                     onDecrement = { update { it.copy(steadyWeight = (it.steadyWeight - 0.05).coerceAtLeast(0.0)) } }, onIncrement = { update { it.copy(steadyWeight = (it.steadyWeight + 0.05).coerceAtMost(1.0)) } })
+                val context = LocalContext.current
+                val saveLog = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+                    if (uri != null) scope.launch(Dispatchers.IO) { LogExport.writeTo(context, uri) }
+                }
+                SettingRow(stringResource(R.string.settings_log), stringResource(R.string.settings_log_help)) {
+                    PillButton(stringResource(R.string.settings_log_save), onClick = { saveLog.launch(LogExport.suggestedName()) }, style = PillStyle.Outline)
+                }
                 Row(Modifier.padding(horizontal = CupolaDimens.paddingH, vertical = 10.dp)) {
                     PillButton(stringResource(R.string.settings_reset_advanced), onClick = { scope.launch { graph.settings.resetAdvanced() } }, style = PillStyle.Outline)
                     Spacer(Modifier.width(10.dp))

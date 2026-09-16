@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import ru.dvedev.me.cupola.AppGraph
 import ru.dvedev.me.cupola.audio.EngineState
 import ru.dvedev.me.cupola.dsp.FrameMetrics
@@ -69,8 +70,20 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
     }
 
     fun startListening() {
-        engine.start(settings.value.audioSource)
+        if (engine.start(settings.value.audioSource)) return
+        // the microphone did not open (busy, or the runtime grant not yet effective): retry
+        // every couple of seconds while the screen is visible instead of staying dark
+        viewModelScope.launch {
+            var attempts = 0
+            while (graph.activityVisible && attempts++ < 10 && !engine.isRunning) {
+                kotlinx.coroutines.delay(2000)
+                if (graph.activityVisible && engine.start(settings.value.audioSource)) break
+            }
+        }
     }
+
+    /** The microphone delivers silence (busy or silenced by the system); the note zone says so. */
+    val inputSilent: StateFlow<Boolean> = engine.inputSilent
 
     /** Called on ON_STOP; the microphone keeps running only inside a session (T-042). */
     fun stopListeningIfIdle() {
