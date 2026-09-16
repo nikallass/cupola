@@ -45,6 +45,11 @@ class SettingsRepository(context: Context) {
     /** Synchronous read for [android.app.Activity.attachBaseContext]. */
     fun languageSync(): Language = runCatching { Language.valueOf(localePrefs.getString(KEY_LANGUAGE, null) ?: "") }.getOrDefault(Language.SYSTEM)
 
+    /** «Сбросить все настройки»: every setting back to its default, except the language and the finished onboarding. */
+    suspend fun resetAll() {
+        update { s -> Settings().copy(language = s.language, onboardingDone = s.onboardingDone) }
+    }
+
     suspend fun resetAdvanced() {
         update { s ->
             val d = Settings()

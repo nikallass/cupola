@@ -175,10 +175,15 @@ fun SpectrogramZone(
                         var k = 1
                         while (k * f < history.fMax && k <= 16) { // the fundamental and overtones 1…15
                             val y = history.yFraction(k * f) * plotH
-                            // owner 2026‑09‑16: the fundamental bold; overtones half as thick, starting at 50 %
-                            // and fading 3 % per step, so the 15th dissolves instead of being cut off
+                            // owner 2026‑09‑16: the fundamental bold; overtones half as thick, 35 % at the 1st
+                            // falling geometrically to 10 % at the 7th, then the last 10 % fades out by the 15th
                             val overtone = k - 1
-                            val col = if (overtone == 0) c.violet.copy(alpha = 0.95f) else c.violet.copy(alpha = (0.50f - 0.03f * (overtone - 1)).coerceAtLeast(0f))
+                            val alpha = when {
+                                overtone == 0 -> 0.95f
+                                overtone <= 7 -> (0.35 * Math.pow(0.10 / 0.35, (overtone - 1) / 6.0)).toFloat()
+                                else -> 0.10f * (16 - overtone) / 9f
+                            }
+                            val col = c.violet.copy(alpha = alpha)
                             drawLine(col, Offset(gutterL, y), Offset(gutterL + plotW, y), strokeWidth = if (overtone == 0) 2.dp.toPx() else 1.dp.toPx())
                             k++
                         }

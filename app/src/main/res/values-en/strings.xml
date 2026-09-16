@@ -157,7 +157,9 @@
     <string name="footer_github">Project on GitHub</string>
     <string name="footer_donate_text">If Cupola helps your practice, please support its development — it keeps the app growing.</string>
     <string name="footer_donate">Support the project</string>
-    <string name="settings_reset_advanced">Reset</string>
+    <string name="settings_reset_confirm_title">Reset all settings?</string>
+    <string name="settings_reset_confirm_body">Every setting returns to its default. The interface language is kept.</string>
+    <string name="settings_reset_advanced">Reset all settings</string>
 
     <string name="notif_channel">Session</string>
     <string name="notif_channel_desc">Cupola is listening while a session runs</string>

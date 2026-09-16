@@ -22,6 +22,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import ru.dvedev.me.cupola.ui.components.ZoneDivider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -66,6 +68,7 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onLanguageChanged: () ->
     val t = CupolaTheme.type
     fun update(f: (Settings) -> Settings) = scope.launch { graph.settings.update(f) }
     var advancedOpen by rememberSaveable { mutableStateOf(false) }
+    var confirmReset by remember { mutableStateOf(false) }
     val tablet = isTabletDevice(LocalContext.current)
 
     Column(Modifier.fillMaxSize().background(c.panel).safeDrawingPadding()) {
@@ -210,13 +213,25 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onLanguageChanged: () ->
                     PillButton(stringResource(R.string.settings_log_save), onClick = { saveLog.launch(LogExport.suggestedName()) }, style = PillStyle.Outline)
                 }
                 Row(Modifier.padding(horizontal = CupolaDimens.paddingH, vertical = 10.dp)) {
-                    PillButton(stringResource(R.string.settings_reset_advanced), onClick = { scope.launch { graph.settings.resetAdvanced() } }, style = PillStyle.Outline)
+                    PillButton(stringResource(R.string.settings_reset_advanced), onClick = { confirmReset = true }, style = PillStyle.Outline)
                 }
             }
+            if (confirmReset) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { confirmReset = false },
+                    title = { Text(stringResource(R.string.settings_reset_confirm_title)) },
+                    text = { Text(stringResource(R.string.settings_reset_confirm_body), style = t.body) },
+                    confirmButton = { androidx.compose.material3.TextButton(onClick = { confirmReset = false; scope.launch { graph.settings.resetAll() } }) { Text(stringResource(R.string.settings_reset_advanced)) } },
+                    dismissButton = { androidx.compose.material3.TextButton(onClick = { confirmReset = false }) { Text(stringResource(R.string.action_cancel)) } },
+                )
+            }
+            // a divider separates the footer from the settings
+            Spacer(Modifier.padding(top = 20.dp))
+            ZoneDivider()
             // footer (owner 2026‑09‑16): the open-source repository and a request to support the project
             val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
             androidx.compose.foundation.layout.Column(
-                Modifier.fillMaxWidth().padding(horizontal = CupolaDimens.paddingH).padding(top = 24.dp, bottom = 32.dp),
+                Modifier.fillMaxWidth().padding(horizontal = CupolaDimens.paddingH).padding(top = 20.dp, bottom = 32.dp),
                 horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {

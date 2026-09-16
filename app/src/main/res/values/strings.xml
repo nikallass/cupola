@@ -165,7 +165,9 @@
     <string name="footer_github">Проект на GitHub</string>
     <string name="footer_donate_text">Если Купол помогает вам в занятиях, поддержите разработку — это помогает делать приложение дальше.</string>
     <string name="footer_donate">Поддержать проект</string>
-    <string name="settings_reset_advanced">Сбросить</string>
+    <string name="settings_reset_confirm_title">Сбросить все настройки?</string>
+    <string name="settings_reset_confirm_body">Все настройки вернутся к значениям по умолчанию. Язык интерфейса сохранится.</string>
+    <string name="settings_reset_advanced">Сбросить все настройки</string>
 
     <!-- notification -->
     <string name="notif_channel">Сессия</string>
