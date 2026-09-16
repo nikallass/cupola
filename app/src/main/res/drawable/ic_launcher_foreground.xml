@@ -20,13 +20,13 @@
         android:strokeWidth="10"
         android:strokeLineCap="round"
         android:pathData="M30,69 A24,24 0 0 1 78,69" />
-    <!-- highlight along the top of the arc -->
+    <!-- gloss on the upper edge of the thick stroke, near the apex only -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#FFE08A"
-        android:strokeWidth="3"
+        android:strokeColor="#E6FFE9A8"
+        android:strokeWidth="3.5"
         android:strokeLineCap="round"
-        android:pathData="M36,62 A22,22 0 0 1 72,62" />
+        android:pathData="M42,47 A26,26 0 0 1 66,47" />
     <!-- the dot -->
     <path
         android:fillColor="#40000000"

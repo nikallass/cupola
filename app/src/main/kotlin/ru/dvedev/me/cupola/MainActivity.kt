@@ -127,6 +127,7 @@ private fun Root(onLanguageChanged: () -> Unit) {
                 granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
                 screen = Screen.ANALYSIS
             },
+            onLanguageChanged = onLanguageChanged,
         )
         return
     }

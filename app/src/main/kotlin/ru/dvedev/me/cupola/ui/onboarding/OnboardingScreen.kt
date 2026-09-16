@@ -34,6 +34,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import ru.dvedev.me.cupola.AppGraph
+import ru.dvedev.me.cupola.settings.Language
 import ru.dvedev.me.cupola.R
 import ru.dvedev.me.cupola.dsp.metrics.VoiceType
 import ru.dvedev.me.cupola.ui.analysis.voiceTypeName
@@ -52,7 +53,7 @@ private const val STEPS = 4
  * room noise (or later). Marks `onboardingDone` when finished.
  */
 @Composable
-fun OnboardingScreen(graph: AppGraph, onRoomNoise: () -> Unit, onFinished: () -> Unit) {
+fun OnboardingScreen(graph: AppGraph, onRoomNoise: () -> Unit, onFinished: () -> Unit, onLanguageChanged: () -> Unit = {}) {
     val c = CupolaTheme.colors
     val t = CupolaTheme.type
     val context = LocalContext.current
@@ -87,6 +88,16 @@ fun OnboardingScreen(graph: AppGraph, onRoomNoise: () -> Unit, onFinished: () ->
         ) {
             when (step) {
                 1 -> {
+                    // language first (owner 2026‑09‑16): the rest of the flow is read in the chosen one
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (l in Language.entries) {
+                            PillButton(
+                                stringResource(when (l) { Language.SYSTEM -> R.string.lang_system; Language.RU -> R.string.lang_ru; Language.EN -> R.string.lang_en }),
+                                onClick = { if (l != settings.language) scope.launch { graph.settings.update { it.copy(language = l) }; onLanguageChanged() } },
+                                style = PillStyle.Outline, active = l == settings.language,
+                            )
+                        }
+                    }
                     Text(stringResource(R.string.ob_1_title), style = t.title, color = c.ink)
                     Text(stringResource(R.string.ob_1_body), style = t.body, color = c.mut)
                     Text(stringResource(R.string.ob_1_soft), style = t.body, color = c.mut)
