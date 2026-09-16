@@ -185,7 +185,8 @@ fun SpectrumZone(
                             val x = xOf(hz)
                             // the number sits at the top edge, the line starts just under that row
                             if (k <= 16) {
-                                val label = k.toString()
+                                // numbered from 0 (the fundamental) to 15 (owner 2026‑09‑16)
+                                val label = (k - 1).toString()
                                 val m = measurer.measure(label, axisStyle)
                                 val left = x - m.size.width / 2
                                 if (left - lastLabelRight >= gap) {

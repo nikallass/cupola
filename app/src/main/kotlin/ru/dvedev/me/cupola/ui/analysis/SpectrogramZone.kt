@@ -171,11 +171,13 @@ fun SpectrogramZone(
                     if (targetNote != null) {
                         val f = targetNote.hz()
                         var k = 1
-                        while (k * f < history.fMax && k <= 16) { // up to the 16th, like the harmonic numbers
+                        while (k * f < history.fMax && k <= 16) { // the fundamental and overtones 1…15
                             val y = history.yFraction(k * f) * plotH
-                            // every harmonic of the target equally readable (owner 2026‑09‑16: 1 px at 30 % vanished above k = 1)
-                            val col = if (k == 1) c.violet.copy(alpha = 0.95f) else c.violet.copy(alpha = 0.7f)
-                            drawLine(col, Offset(gutterL, y), Offset(gutterL + plotW, y), strokeWidth = if (k == 1) 2.dp.toPx() else 1.2.dp.toPx())
+                            // owner 2026‑09‑16: the fundamental bold; overtones half as thick, starting at 50 %
+                            // and fading 3 % per step, so the 15th dissolves instead of being cut off
+                            val overtone = k - 1
+                            val col = if (overtone == 0) c.violet.copy(alpha = 0.95f) else c.violet.copy(alpha = (0.50f - 0.03f * (overtone - 1)).coerceAtLeast(0f))
+                            drawLine(col, Offset(gutterL, y), Offset(gutterL + plotW, y), strokeWidth = if (overtone == 0) 2.dp.toPx() else 1.dp.toPx())
                             k++
                         }
                     }
@@ -208,11 +210,13 @@ fun SpectrogramZone(
                 val minGap = 10.dp.toPx()
                 for (h in harmonics.sortedByDescending { it.hz }) {
                     if (!h.audible || h.k > 16 || h.hz > history.fMax || h.hz < history.fMin) continue
+                    // numbered from 0 (the fundamental) to 15 (owner 2026‑09‑16)
+                    val num = (h.k - 1).toString()
                     val y = history.yFraction(h.hz) * plotH
                     drawLine(c.mut, Offset(gutterL + plotW, y), Offset(gutterL + plotW + 4.dp.toPx(), y), strokeWidth = 1.5f)
                     if (y - lastLabelY >= minGap) {
-                        val m = measurer.measure(h.k.toString(), axisStyle)
-                        drawLabel(measurer, h.k.toString(), Offset(gutterL + plotW + 6.dp.toPx(), y - m.size.height / 2), axisStyle.copy(color = c.mut))
+                        val m = measurer.measure(num, axisStyle)
+                        drawLabel(measurer, num, Offset(gutterL + plotW + 6.dp.toPx(), y - m.size.height / 2), axisStyle.copy(color = c.mut))
                         lastLabelY = y
                     }
                 }
