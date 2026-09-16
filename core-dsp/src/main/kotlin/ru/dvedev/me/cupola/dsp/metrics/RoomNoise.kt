@@ -60,6 +60,8 @@ class RoomNoiseSession(
 
     fun push(spectrumDb: DoubleArray, rmsDbfs: Double) {
         if (done) return
+        // digital silence (no signal from the microphone yet) is not a room: skip it, the countdown waits
+        if (rmsDbfs < DIGITAL_SILENCE_DBFS) return
         for (b in 0 until minOf(bins, spectrumDb.size)) sumPower[b] += 10.0.pow(spectrumDb[b] / 10.0)
         rms += rmsDbfs
         count++
@@ -79,4 +81,9 @@ class RoomNoiseSession(
     }
 
     val noisy: Boolean get() = done && result().rmsDbfs > RoomNoise.NOISY_ROOM_DBFS
+
+    companion object {
+        /** Below this RMS the input is digital zero — not a measurement. */
+        const val DIGITAL_SILENCE_DBFS = -150.0
+    }
 }

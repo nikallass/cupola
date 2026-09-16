@@ -87,6 +87,7 @@ fun RoomNoiseScreen(vm: RoomNoiseViewModel, band: RingBand, onDone: () -> Unit, 
                 RoomNoiseStep.MEASURING -> {
                     Text(stringResource(R.string.noise_measuring_title), style = t.title, color = c.ink)
                     Text(stringResource(R.string.noise_measuring_body), style = t.body, color = c.mut)
+                    if (s.noSignal) Text(stringResource(R.string.noise_no_signal), style = t.body, color = c.bad)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                         Text(ceil(s.secondsLeft).toInt().toString(), style = t.note, color = c.ink)
                         Column(Modifier.weight(1f)) {

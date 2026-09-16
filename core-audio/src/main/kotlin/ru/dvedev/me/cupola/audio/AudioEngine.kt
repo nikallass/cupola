@@ -128,6 +128,7 @@ class AudioEngine(
             var silentChunks = 0
             var lastReopenNanos = 0L
             var chunksSinceCheck = 0
+            var reopens = 0
             try {
                 capture.start()
                 while (running.get()) {
@@ -151,10 +152,17 @@ class AudioEngine(
                         if ((silentSeconds >= SILENCE_REOPEN_SECONDS || policySilenced) && now - lastReopenNanos > REOPEN_INTERVAL_NS) {
                             lastReopenNanos = now
                             silentChunks = 0
-                            Log.w(TAG, "reopening the microphone after silence (policySilenced=$policySilenced)")
+                            // every other attempt takes the other source: on the OnePlus first launch the
+                            // declared UNPROCESSED stayed silent for ~40 s while VOICE_RECOGNITION works at once
+                            val current = capture.status?.source
+                            val pref = if (reopens++ % 2 == 1 && lastPreference == AudioSourcePreference.AUTO) {
+                                if (current == AudioCapture.UNPROCESSED) AudioSourcePreference.VOICE_RECOGNITION else AudioSourcePreference.UNPROCESSED
+                            } else lastPreference
+                            Log.w(TAG, "reopening the microphone after silence (policySilenced=$policySilenced, attempt=$reopens, preference=$pref)")
                             try {
                                 capture.stop()
-                                val st = capture.open(lastPreference)
+                                val st = capture.open(pref)
+                                _state.value = EngineState.Running(st)
                                 if (st.sampleRate != status.sampleRate) Log.w(TAG, "reopened at ${st.sampleRate} Hz instead of ${status.sampleRate} Hz")
                                 capture.start()
                             } catch (e: AudioCaptureException) {

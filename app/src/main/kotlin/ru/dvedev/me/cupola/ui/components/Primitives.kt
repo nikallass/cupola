@@ -124,7 +124,7 @@ fun PillButton(
             .background(bg)
             .border(1.dp, border, CircleShape)
             .clickable(enabled = enabled, onClick = onClick)
-            .alpha(if (enabled) 1f else 0.4f)
+            .alpha(if (enabled) 1f else 0.45f)
             .padding(horizontal = padH, vertical = CupolaDimens.buttonPaddingV),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -78,6 +78,7 @@
     <string name="noise_begin">Begin</string>
     <string name="noise_measuring_title">Silence</string>
     <string name="noise_measuring_body">Stay quiet: measuring the room.</string>
+    <string name="noise_no_signal">No signal from the microphone yet — please wait, the countdown starts when it appears.</string>
     <string name="noise_level">level</string>
     <string name="noise_result_title">Done</string>
     <string name="noise_result_level">Room noise</string>

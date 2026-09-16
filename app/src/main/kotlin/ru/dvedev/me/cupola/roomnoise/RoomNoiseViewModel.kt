@@ -22,6 +22,8 @@ data class RoomNoiseUiState(
     val secondsLeft: Double = 0.0,
     /** Live level, dBFS, for the meter. */
     val levelDbfs: Double = -100.0,
+    /** The microphone delivers nothing yet (digital zero): the countdown waits. */
+    val noSignal: Boolean = false,
     val result: RoomNoise? = null,
     val saved: Boolean = false,
 )
@@ -56,6 +58,7 @@ class RoomNoiseViewModel(private val graph: AppGraph) : ViewModel() {
                 progress = s?.progress?.toFloat() ?: 0f,
                 secondsLeft = s?.secondsLeft ?: 0.0,
                 levelDbfs = m.splDbfs,
+                noSignal = m.splDbfs < RoomNoiseSession.DIGITAL_SILENCE_DBFS || engine.inputSilent.value,
             )
         }
     }

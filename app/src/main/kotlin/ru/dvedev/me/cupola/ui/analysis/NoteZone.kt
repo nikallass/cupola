@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -307,9 +308,14 @@ private fun CupolaArc(ring: Double, counted: Boolean, valueText: String, subText
         }
         Text(subText, style = t.stats, color = c.goldInk, maxLines = 1, modifier = Modifier.height(22.dp).padding(top = 2.dp))
         // under the readout: the pinned note (or ♪ → picker) and «Дать тон», which needs a pinned note
-        Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            PillButton(if (targetNote != null) NoteNames.en(targetNote) else "♪", onClick = onPickNote, style = PillStyle.Outline, compact = true, active = targetNote != null)
-            PillButton(stringResource(R.string.action_give_tone), onClick = onGiveTone, style = PillStyle.Outline, compact = true, enabled = targetNote != null)
+        // the row may be wider than the arc column (A♯4 + «Дать тон»): it overflows symmetrically instead of clipping
+        Row(
+            Modifier.padding(top = 10.dp).wrapContentWidth(Alignment.CenterHorizontally, unbounded = true),
+            horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PillButton(if (targetNote != null) NoteNames.en(targetNote) else "♯", onClick = onPickNote, style = PillStyle.Outline, compact = true, active = targetNote != null)
+            // Muted (panel fill + darker line): the Outline border is invisible on the cream panel
+            PillButton(stringResource(R.string.action_give_tone), onClick = onGiveTone, style = PillStyle.Muted, compact = true, enabled = targetNote != null)
         }
     }
 }

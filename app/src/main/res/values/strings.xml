@@ -86,6 +86,7 @@
     <string name="noise_begin">Начать</string>
     <string name="noise_measuring_title">Тишина</string>
     <string name="noise_measuring_body">Не шумите: измеряем фон комнаты.</string>
+    <string name="noise_no_signal">Нет сигнала с микрофона — подождите, отсчёт начнётся, когда сигнал появится.</string>
     <string name="noise_level">уровень</string>
     <string name="noise_result_title">Готово</string>
     <string name="noise_result_level">Шум комнаты</string>
