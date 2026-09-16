@@ -30,6 +30,7 @@ data class AnalyzerConfig(
     val a4Hz: Double = Tuning.DEFAULT_A4_HZ,
     val confidenceMin: Double = 0.7,
     val includeFundamentalInOvertones: Boolean = false,
+    val vibratoThresholds: ru.dvedev.me.cupola.dsp.metrics.VibratoThresholds = ru.dvedev.me.cupola.dsp.metrics.VibratoThresholds(),
     val scoreParams: ScoreParams = ScoreParams(),
 )
 
@@ -50,6 +51,9 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
     /** A measured room profile to seed the noise floor with; applied on the analysis thread, then cleared. */
     @Volatile var pendingRoomNoise: DoubleArray? = null
     @Volatile var includeFundamentalInOvertones: Boolean = config.includeFundamentalInOvertones
+    var vibratoThresholds: ru.dvedev.me.cupola.dsp.metrics.VibratoThresholds
+        get() = vibrato.thresholds
+        set(value) { vibrato.thresholds = value }
 
     val framer = Framer(fftSize, hop, sampleRate)
     /** Live spectrum of the frame being reported in the callback (dB per bin). */
@@ -62,7 +66,7 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
     @Volatile var pitchTrace: ((raw: ru.dvedev.me.cupola.dsp.pitch.PitchEstimate, out: ru.dvedev.me.cupola.dsp.pitch.PitchEstimate) -> Unit)? = null
     val harmonics = HarmonicTracker(maxHz = minOf(8000.0, spectrum.nyquistHz))
     val pitchStats = PitchStats(hopSeconds)
-    val vibrato = VibratoAnalyzer(hopSeconds)
+    val vibrato = VibratoAnalyzer(hopSeconds).also { it.thresholds = config.vibratoThresholds }
     val scorer = Scorer(hopSeconds, config.scoreParams)
     private val overtoneMedian = RollingMedian((0.3 / hopSeconds).toInt().coerceAtLeast(1))
     private val noteScratch = Note(69)

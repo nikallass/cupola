@@ -155,6 +155,11 @@
     <string name="settings_ring_share_help">Какая доля энергии голоса (80 Гц – 8 кГц, без шума комнаты) должна попасть в полосу купола, чтобы дуга сомкнулась. Ниже — легче, выше — строже.</string>
     <string name="settings_ring_hump">Купол: горб для максимума</string>
     <string name="settings_ring_hump_help">На сколько dB пик в полосе купола должен возвышаться над соседними участками спектра, чтобы дуга сомкнулась. Громкость на это не влияет.</string>
+    <string name="settings_straight_cents">Прямой тон: размах до</string>
+    <string name="settings_vibrato_min_hz">Вибрато: частота от</string>
+    <string name="settings_vibrato_max_hz">Вибрато: частота до</string>
+    <string name="settings_vibrato_max_cents">Вибрато: размах до</string>
+    <string name="settings_vibrato_help">Границы подписи под нотой. Размах меньше «прямого тона» — прямой тон. Частота выше верхней — тремоло. Частота ниже нижней или размах больше «вибрато: размах до» — качание. Остальное — вибрато. Качание и тремоло снижают «ровность» на 40 %%.</string>
     <string name="settings_w_ring">Вес: купол</string>
     <string name="settings_w_pitch">Вес: точность</string>
     <string name="settings_w_steady">Вес: ровность</string>

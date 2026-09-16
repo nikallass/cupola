@@ -183,6 +183,14 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onRoomNoise: () -> Unit,
                     onDecrement = { update { it.copy(ringShareFullPct = (it.ringShareFullPct - 1).coerceAtLeast(4)) } }, onIncrement = { update { it.copy(ringShareFullPct = (it.ringShareFullPct + 1).coerceAtMost(40)) } })
                 StepperRow(stringResource(R.string.settings_ring_hump), stringResource(R.string.settings_ring_hump_help), "${s.ringHumpFullDb} dB",
                     onDecrement = { update { it.copy(ringHumpFullDb = (it.ringHumpFullDb - 1).coerceAtLeast(2)) } }, onIncrement = { update { it.copy(ringHumpFullDb = (it.ringHumpFullDb + 1).coerceAtMost(20)) } })
+                StepperRow(stringResource(R.string.settings_straight_cents), stringResource(R.string.settings_vibrato_help), "±${s.straightMaxCents} ¢",
+                    onDecrement = { update { it.copy(straightMaxCents = (it.straightMaxCents - 1).coerceAtLeast(3)) } }, onIncrement = { update { it.copy(straightMaxCents = (it.straightMaxCents + 1).coerceAtMost(60)) } })
+                StepperRow(stringResource(R.string.settings_vibrato_min_hz), stringResource(R.string.settings_vibrato_help), "%.1f ".format(s.vibratoMinHz) + stringResource(R.string.unit_hz),
+                    onDecrement = { update { it.copy(vibratoMinHz = (it.vibratoMinHz - 0.1).coerceAtLeast(1.5)) } }, onIncrement = { update { it.copy(vibratoMinHz = (it.vibratoMinHz + 0.1).coerceAtMost(it.vibratoMaxHz - 0.5)) } })
+                StepperRow(stringResource(R.string.settings_vibrato_max_hz), stringResource(R.string.settings_vibrato_help), "%.1f ".format(s.vibratoMaxHz) + stringResource(R.string.unit_hz),
+                    onDecrement = { update { it.copy(vibratoMaxHz = (it.vibratoMaxHz - 0.1).coerceAtLeast(it.vibratoMinHz + 0.5)) } }, onIncrement = { update { it.copy(vibratoMaxHz = (it.vibratoMaxHz + 0.1).coerceAtMost(15.0)) } })
+                StepperRow(stringResource(R.string.settings_vibrato_max_cents), stringResource(R.string.settings_vibrato_help), "±${s.vibratoMaxCents} ¢",
+                    onDecrement = { update { it.copy(vibratoMaxCents = (it.vibratoMaxCents - 5).coerceAtLeast(it.straightMaxCents + 5)) } }, onIncrement = { update { it.copy(vibratoMaxCents = (it.vibratoMaxCents + 5).coerceAtMost(300)) } })
                 StepperRow(stringResource(R.string.settings_w_ring), stringResource(R.string.settings_weights_help), "%.2f".format(s.ringWeight),
                     onDecrement = { update { it.copy(ringWeight = (it.ringWeight - 0.05).coerceAtLeast(0.0)) } }, onIncrement = { update { it.copy(ringWeight = (it.ringWeight + 0.05).coerceAtMost(1.0)) } })
                 StepperRow(stringResource(R.string.settings_w_pitch), stringResource(R.string.settings_weights_help), "%.2f".format(s.pitchWeight),

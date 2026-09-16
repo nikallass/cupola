@@ -63,6 +63,7 @@ class SettingsRepository(context: Context) {
             s.copy(
                 centsOk = d.centsOk, centsWarn = d.centsWarn, confidenceMin = d.confidenceMin,
                 ringShareFullPct = d.ringShareFullPct, ringHumpFullDb = d.ringHumpFullDb,
+                straightMaxCents = d.straightMaxCents, vibratoMinHz = d.vibratoMinHz, vibratoMaxHz = d.vibratoMaxHz, vibratoMaxCents = d.vibratoMaxCents,
                 ringWeight = d.ringWeight, pitchWeight = d.pitchWeight, steadyWeight = d.steadyWeight,
             )
         }
@@ -93,6 +94,10 @@ class SettingsRepository(context: Context) {
             confidenceMin = this[doublePreferencesKey(K_CONF)] ?: d.confidenceMin,
             ringShareFullPct = this[intPreferencesKey(K_RING_SHARE)] ?: d.ringShareFullPct,
             ringHumpFullDb = this[intPreferencesKey(K_RING_HUMP)] ?: d.ringHumpFullDb,
+            straightMaxCents = this[intPreferencesKey(K_STRAIGHT_CENTS)] ?: d.straightMaxCents,
+            vibratoMinHz = this[doublePreferencesKey(K_VIB_MIN_HZ)] ?: d.vibratoMinHz,
+            vibratoMaxHz = this[doublePreferencesKey(K_VIB_MAX_HZ)] ?: d.vibratoMaxHz,
+            vibratoMaxCents = this[intPreferencesKey(K_VIB_MAX_CENTS)] ?: d.vibratoMaxCents,
             ringWeight = this[doublePreferencesKey(K_W_RING)] ?: d.ringWeight,
             pitchWeight = this[doublePreferencesKey(K_W_PITCH)] ?: d.pitchWeight,
             steadyWeight = this[doublePreferencesKey(K_W_STEADY)] ?: d.steadyWeight,
@@ -122,6 +127,10 @@ class SettingsRepository(context: Context) {
         this[doublePreferencesKey(K_CONF)] = s.confidenceMin
         this[intPreferencesKey(K_RING_SHARE)] = s.ringShareFullPct
         this[intPreferencesKey(K_RING_HUMP)] = s.ringHumpFullDb
+        this[intPreferencesKey(K_STRAIGHT_CENTS)] = s.straightMaxCents
+        this[doublePreferencesKey(K_VIB_MIN_HZ)] = s.vibratoMinHz
+        this[doublePreferencesKey(K_VIB_MAX_HZ)] = s.vibratoMaxHz
+        this[intPreferencesKey(K_VIB_MAX_CENTS)] = s.vibratoMaxCents
         this[doublePreferencesKey(K_W_RING)] = s.ringWeight
         this[doublePreferencesKey(K_W_PITCH)] = s.pitchWeight
         this[doublePreferencesKey(K_W_STEADY)] = s.steadyWeight
@@ -152,6 +161,10 @@ class SettingsRepository(context: Context) {
         private const val K_CONF = "confidenceMin"
         private const val K_RING_SHARE = "ringShareFullPct"
         private const val K_RING_HUMP = "ringHumpFullDb"
+        private const val K_STRAIGHT_CENTS = "straightMaxCents"
+        private const val K_VIB_MIN_HZ = "vibratoMinHz"
+        private const val K_VIB_MAX_HZ = "vibratoMaxHz"
+        private const val K_VIB_MAX_CENTS = "vibratoMaxCents"
         private const val K_W_RING = "ringWeight"
         private const val K_W_PITCH = "pitchWeight"
         private const val K_W_STEADY = "steadyWeight"

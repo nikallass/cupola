@@ -54,6 +54,7 @@ class AppGraph(private val app: Application) {
                         confidenceMin = s.confidenceMin,
                         fftSize = s.fftSize, // hop stays 480 (10 ms) for both 2048 and 4096 (SPEC §4)
                         scoreParams = s.scoreParams(),
+                        vibratoThresholds = s.vibratoThresholds(),
                     )
                 }
                 if (restart && engine.isRunning) {

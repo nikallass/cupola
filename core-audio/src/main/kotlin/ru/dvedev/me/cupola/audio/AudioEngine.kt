@@ -87,6 +87,7 @@ class AudioEngine(
         analyzer.a4Hz = c.a4Hz
         analyzer.confidenceMin = c.confidenceMin
         analyzer.includeFundamentalInOvertones = c.includeFundamentalInOvertones
+        analyzer.vibratoThresholds = c.vibratoThresholds
     }
 
     val config: AnalyzerConfig get() = baseConfig

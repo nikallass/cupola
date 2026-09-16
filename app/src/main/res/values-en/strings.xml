@@ -147,6 +147,11 @@
     <string name="settings_ring_share_help">What share of the voice energy (80 Hz – 8 kHz, room noise removed) must sit in the cupola band for the arc to close. Lower — easier, higher — stricter.</string>
     <string name="settings_ring_hump">Cupola: hump for maximum</string>
     <string name="settings_ring_hump_help">How many dB the peak in the cupola band must rise above the neighbouring spectrum for the arc to close. Loudness does not affect it.</string>
+    <string name="settings_straight_cents">Straight tone: extent up to</string>
+    <string name="settings_vibrato_min_hz">Vibrato: rate from</string>
+    <string name="settings_vibrato_max_hz">Vibrato: rate up to</string>
+    <string name="settings_vibrato_max_cents">Vibrato: extent up to</string>
+    <string name="settings_vibrato_help">Borders of the label under the note. Extent below the straight-tone value — straight tone. Rate above the upper border — tremolo. Rate below the lower border or extent above the vibrato extent — wobble. Everything else — vibrato. Wobble and tremolo lower "steadiness" by 40 %%.</string>
     <string name="settings_w_ring">Weight: cupola</string>
     <string name="settings_w_pitch">Weight: accuracy</string>
     <string name="settings_w_steady">Weight: steadiness</string>

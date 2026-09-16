@@ -2,6 +2,7 @@ package ru.dvedev.me.cupola.settings
 
 import ru.dvedev.me.cupola.audio.AudioSourcePreference
 import ru.dvedev.me.cupola.dsp.metrics.RingBand
+import ru.dvedev.me.cupola.dsp.metrics.VibratoThresholds
 import ru.dvedev.me.cupola.dsp.metrics.VoiceType
 import ru.dvedev.me.cupola.dsp.score.ScoreParams
 import ru.dvedev.me.cupola.dsp.score.ScoreWeights
@@ -39,6 +40,11 @@ data class Settings(
     val ringShareFullPct: Int = 12,
     /** Hump over the flanks that earns the full cupola, dB. */
     val ringHumpFullDb: Int = 6,
+    /** Vibrato classification borders (advanced): straight below, tremolo above, wobble outside. */
+    val straightMaxCents: Int = 15,
+    val vibratoMinHz: Double = 4.0,
+    val vibratoMaxHz: Double = 7.5,
+    val vibratoMaxCents: Int = 120,
     val ringWeight: Double = ScoreWeights.RING,
     val pitchWeight: Double = ScoreWeights.PITCH,
     val steadyWeight: Double = ScoreWeights.STEADY,
@@ -46,6 +52,13 @@ data class Settings(
 ) {
     val band: RingBand
         get() = if (useCustomBand) RingBand(customLoHz.toDouble(), customHiHz.toDouble()) else voiceType.band
+
+    fun vibratoThresholds(): VibratoThresholds = VibratoThresholds(
+        straightMaxCents = straightMaxCents.toDouble(),
+        vibratoMinHz = vibratoMinHz,
+        vibratoMaxHz = vibratoMaxHz,
+        vibratoMaxCents = vibratoMaxCents.toDouble(),
+    )
 
     fun scoreParams(): ScoreParams = ScoreParams(
         ringWeight = ringWeight,

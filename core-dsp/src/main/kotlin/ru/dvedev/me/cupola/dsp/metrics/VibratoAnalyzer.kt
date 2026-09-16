@@ -34,6 +34,18 @@ data class Vibrato(val rateHz: Double, val extentCents: Double, val kind: Vibrat
  * parabolic refinement; extent is the interpolated peak amplitude (half-swing in cents).
  * Recomputed every [everyFrames] frames; [current] holds the latest result.
  */
+/**
+ * Borders between a straight tone, vibrato, wobble and tremolo: a modulation narrower than
+ * [straightMaxCents] is straight; faster than [vibratoMaxHz] is a tremolo; slower than
+ * [vibratoMinHz] or wider than [vibratoMaxCents] is a wobble; the rest is vibrato.
+ */
+data class VibratoThresholds(
+    val straightMaxCents: Double = VibratoAnalyzer.STRAIGHT_MAX_CENTS,
+    val vibratoMinHz: Double = VibratoAnalyzer.VIBRATO_MIN_HZ,
+    val vibratoMaxHz: Double = VibratoAnalyzer.VIBRATO_MAX_HZ,
+    val vibratoMaxCents: Double = VibratoAnalyzer.VIBRATO_MAX_CENTS,
+)
+
 class VibratoAnalyzer(
     val hopSeconds: Double,
     val windowSeconds: Double = 2.0,
@@ -58,6 +70,9 @@ class VibratoAnalyzer(
 
     var current: Vibrato = Vibrato.NONE
         private set
+
+    /** Classification borders (SPEC §15.5; adjustable in advanced settings since 2026‑09‑16). */
+    @Volatile var thresholds: VibratoThresholds = VibratoThresholds()
 
     /** Push one frame's residual (NaN when unvoiced) and return the current estimate. */
     fun push(residualCents: Double): Vibrato {
@@ -110,7 +125,7 @@ class VibratoAnalyzer(
         // reasonable share of the residual energy
         val rms = residualRms(mean)
         val extent = amplitude.coerceAtMost(rms * sqrt(2.0) * 1.5)
-        return Vibrato(rate, extent, classify(rate, extent))
+        return Vibrato(rate, extent, classify(rate, extent, thresholds))
     }
 
     private fun residualRms(mean: Double): Double {
@@ -129,10 +144,10 @@ class VibratoAnalyzer(
         const val VIBRATO_MAX_HZ = 7.5
         const val VIBRATO_MAX_CENTS = 120.0
 
-        fun classify(rateHz: Double, extentCents: Double): VibratoKind = when {
-            extentCents < STRAIGHT_MAX_CENTS -> VibratoKind.STRAIGHT
-            rateHz > VIBRATO_MAX_HZ -> VibratoKind.TREMOLO
-            rateHz < VIBRATO_MIN_HZ || extentCents > VIBRATO_MAX_CENTS -> VibratoKind.WOBBLE
+        fun classify(rateHz: Double, extentCents: Double, t: VibratoThresholds = VibratoThresholds()): VibratoKind = when {
+            extentCents < t.straightMaxCents -> VibratoKind.STRAIGHT
+            rateHz > t.vibratoMaxHz -> VibratoKind.TREMOLO
+            rateHz < t.vibratoMinHz || extentCents > t.vibratoMaxCents -> VibratoKind.WOBBLE
             else -> VibratoKind.VIBRATO
         }
     }
