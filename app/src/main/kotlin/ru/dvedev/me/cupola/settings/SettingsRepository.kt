@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import org.json.JSONObject
 import ru.dvedev.me.cupola.audio.AudioSourcePreference
-import ru.dvedev.me.cupola.dsp.metrics.RoomNoise
 import ru.dvedev.me.cupola.dsp.metrics.VoiceType
 import ru.dvedev.me.cupola.notation.Accidentals
 import ru.dvedev.me.cupola.notation.NotationMode
@@ -23,7 +22,7 @@ import ru.dvedev.me.cupola.ui.theme.ThemeMode
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "cupola_settings")
 
 /**
- * DataStore-backed settings and the room noise profile (SPEC §15.2: no Room in v0.1).
+ * DataStore-backed settings (SPEC §15.2: no Room in v0.1).
  */
 class SettingsRepository(context: Context) {
     private val store = context.applicationContext.dataStore
@@ -45,17 +44,6 @@ class SettingsRepository(context: Context) {
 
     /** Synchronous read for [android.app.Activity.attachBaseContext]. */
     fun languageSync(): Language = runCatching { Language.valueOf(localePrefs.getString(KEY_LANGUAGE, null) ?: "") }.getOrDefault(Language.SYSTEM)
-
-    /** The measured room noise profile, or null. */
-    val roomNoise: Flow<RoomNoise?> = store.data.map { prefs -> prefs[stringPreferencesKey(K_ROOM_NOISE)]?.let { parseRoomNoise(it) } }
-
-    suspend fun saveRoomNoise(noise: RoomNoise) {
-        store.edit { it[stringPreferencesKey(K_ROOM_NOISE)] = noise.toJson() }
-    }
-
-    suspend fun clearRoomNoise() {
-        store.edit { it.remove(stringPreferencesKey(K_ROOM_NOISE)) }
-    }
 
     suspend fun resetAdvanced() {
         update { s ->
@@ -146,7 +134,6 @@ class SettingsRepository(context: Context) {
     companion object {
         private const val LOCALE_PREFS = "cupola_locale"
         private const val KEY_LANGUAGE = "language"
-        private const val K_ROOM_NOISE = "roomNoise"
         private const val K_VOICE = "voiceType"
         private const val K_CUSTOM_LO = "customLoHz"
         private const val K_CUSTOM_HI = "customHiHz"
@@ -179,21 +166,5 @@ class SettingsRepository(context: Context) {
         private const val K_W_STEADY = "steadyWeight"
         private const val K_ONBOARDING = "onboardingDone"
 
-        fun RoomNoise.toJson(): String = JSONObject()
-            .put("sampleRate", sampleRate).put("fftSize", fftSize).put("rms", rmsDbfs).put("createdAt", createdAtEpochMs)
-            .put("profile", profileDb.joinToString(",") { "%.1f".format(java.util.Locale.ROOT, it) })
-            .toString()
-
-        fun parseRoomNoise(json: String): RoomNoise? = runCatching {
-            val o = JSONObject(json)
-            val profile = o.getString("profile").split(',').map { it.toDouble() }.toDoubleArray()
-            RoomNoise(
-                sampleRate = o.getInt("sampleRate"),
-                fftSize = o.getInt("fftSize"),
-                profileDb = profile,
-                rmsDbfs = o.getDouble("rms"),
-                createdAtEpochMs = o.getLong("createdAt"),
-            )
-        }.getOrNull()
     }
 }

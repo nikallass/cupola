@@ -33,7 +33,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -59,7 +59,7 @@ import ru.dvedev.me.cupola.ui.theme.CupolaTheme
  * right (T-058).
  */
 @Composable
-fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: () -> Unit) {
+fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit) {
     val liveMetrics by vm.uiMetrics.collectAsStateWithLifecycle()
     val metrics = if (vm.paused) vm.frozenMetrics else liveMetrics
     val liveNote by vm.displayNote.collectAsStateWithLifecycle()
@@ -87,7 +87,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
     var spectrogramFolded by rememberSaveable { mutableStateOf(false) }
     var spectrumFolded by rememberSaveable { mutableStateOf(false) }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(c.panel).systemBarsPadding()) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(c.panel).safeDrawingPadding()) {
         val landscape = maxWidth > maxHeight && maxWidth >= 600.dp
         // a phone held sideways: the note and the arc side by side in a narrower column, the
         // spectrogram takes the rest, the spectrum only if there is room
@@ -95,23 +95,11 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
         val roomForSpectrum = maxHeight >= 400.dp
         val narrow = maxWidth < 420.dp
         Column(Modifier.fillMaxSize()) {
-            if (settings.trainingMode) {
-                TopBar(
-                    voiceType = settings.voiceType,
-                    band = band,
-                    customBand = settings.useCustomBand,
-                    session = session,
-                    onStartStop = { if (session.active) vm.stopSession() else startSession() },
-                    onPause = { vm.togglePause() },
-                    onSettings = onSettings,
-                    compact = narrow,
-                )
-            }
             val noteZone: @Composable (Modifier, Boolean) -> Unit = { mod, compact ->
                 NoteZone(
                     metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote,
                     notation = notation, accidentals = accidentals, hintsEnabled = settings.hints, pointsAnimation = settings.pointsAnimation,
-                    onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onRoomNoise, onGiveTone = { vm.playTargetTone() }, onPickNote = { pickerOpen = true }, inputSilent = inputSilent,
+                    onTapNote = { vm.toggleTarget(it) }, onLongPressArc = {}, onGiveTone = { vm.playTargetTone() }, onPickNote = { pickerOpen = true }, inputSilent = inputSilent,
                     modifier = mod, compact = compact,
                     collapsed = noteFolded, onToggle = { noteFolded = !noteFolded },
                 )
@@ -172,20 +160,38 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
                 graphs(1f, if (narrow) 220.dp else CupolaDimens.spectrumHeight, !narrow)
             }
         }
-        if (!settings.trainingMode) {
-            // analysis-only mode: pause and settings as floating, half-transparent buttons over the graphs
-            Box(
-                Modifier.align(Alignment.BottomEnd).padding(end = 68.dp, bottom = 16.dp).size(44.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(if (vm.paused) c.violet.copy(alpha = 0.25f) else c.panel.copy(alpha = 0.7f))
-                    .border(1.dp, (if (vm.paused) c.violet else c.line2).copy(alpha = 0.7f), androidx.compose.foundation.shape.CircleShape)
-                    .clickable { vm.togglePause() },
-                contentAlignment = Alignment.Center,
-            ) {
-                val ink = if (vm.paused) c.violetInk else c.mut.copy(alpha = 0.85f)
-                androidx.compose.foundation.Canvas(Modifier.size(18.dp)) {
+        // floating round controls (owner 2026‑09‑16: no top bar): ★ start/stop the game (training
+        // mode only), pause, settings — half-transparent over the bottom-right corner of the graphs
+        Row(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (settings.trainingMode) {
+                FloatingRoundButton(active = session.active, onClick = { if (session.active) vm.stopSession() else startSession() }) { ink ->
+                    if (session.active) {
+                        // stop: a rounded square
+                        androidx.compose.foundation.Canvas(Modifier.size(14.dp)) { drawRoundRect(ink, cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx())) }
+                    } else {
+                        // a drawn five-point star, sized like the gear and the pause bars (a ★ glyph sat small and off-centre)
+                        androidx.compose.foundation.Canvas(Modifier.size(22.dp)) {
+                            val cx = size.width / 2
+                            val cy = size.height / 2 + size.height * 0.04f
+                            val outer = size.minDimension * 0.5f
+                            val inner = outer * 0.42f
+                            val star = androidx.compose.ui.graphics.Path()
+                            for (i in 0 until 10) {
+                                val r = if (i % 2 == 0) outer else inner
+                                val a = Math.toRadians(-90.0 + i * 36.0)
+                                val x = cx + (r * kotlin.math.cos(a)).toFloat()
+                                val y = cy + (r * kotlin.math.sin(a)).toFloat()
+                                if (i == 0) star.moveTo(x, y) else star.lineTo(x, y)
+                            }
+                            star.close()
+                            drawPath(star, ink)
+                        }
+                    }
+                }
+            }
+            FloatingRoundButton(active = vm.paused, onClick = { vm.togglePause() }) { ink ->
+                androidx.compose.foundation.Canvas(Modifier.size(16.dp)) {
                     if (vm.paused) {
-                        // resume: a play triangle
                         val p = androidx.compose.ui.graphics.Path().apply { moveTo(size.width * 0.2f, 0f); lineTo(size.width, size.height / 2); lineTo(size.width * 0.2f, size.height); close() }
                         drawPath(p, ink)
                     } else {
@@ -195,20 +201,8 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
                     }
                 }
             }
-            Box(
-                Modifier.align(Alignment.BottomEnd).padding(16.dp).size(44.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(c.panel.copy(alpha = 0.7f))
-                    .border(1.dp, c.line2.copy(alpha = 0.7f), androidx.compose.foundation.shape.CircleShape)
-                    .clickable(onClick = onSettings),
-                contentAlignment = Alignment.Center,
-            ) {
-                androidx.compose.material3.Icon(
-                    androidx.compose.material.icons.Icons.Outlined.Settings,
-                    contentDescription = stringResource(R.string.action_settings),
-                    tint = c.mut.copy(alpha = 0.85f),
-                    modifier = Modifier.size(22.dp),
-                )
+            FloatingRoundButton(active = false, onClick = onSettings) { ink ->
+                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Settings, contentDescription = stringResource(R.string.action_settings), tint = ink, modifier = Modifier.size(22.dp))
             }
         }
     }
@@ -289,4 +283,18 @@ private fun NotePickerDialog(current: Note?, notation: NotationMode, accidentals
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },
         dismissButton = { if (current != null) TextButton(onClick = onClear) { Text(stringResource(R.string.pick_note_clear)) } },
     )
+}
+
+/** A half-transparent round button floating over the graphs; [active] tints it violet. */
+@Composable
+private fun FloatingRoundButton(active: Boolean, onClick: () -> Unit, content: @Composable (ink: androidx.compose.ui.graphics.Color) -> Unit) {
+    val c = CupolaTheme.colors
+    Box(
+        Modifier.size(44.dp)
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .background(if (active) c.violet.copy(alpha = 0.25f) else c.panel.copy(alpha = 0.7f))
+            .border(1.dp, (if (active) c.violet else c.line2).copy(alpha = 0.7f), androidx.compose.foundation.shape.CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { content(if (active) c.violetInk else c.mut.copy(alpha = 0.85f)) }
 }

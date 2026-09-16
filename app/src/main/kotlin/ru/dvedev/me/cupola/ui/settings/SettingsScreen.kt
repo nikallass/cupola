@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -58,9 +58,8 @@ import java.util.Date
 /** Settings (SPEC §15.5, T-060). Every field has a «?» with a plain explanation. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onRoomNoise: () -> Unit, onTokens: () -> Unit, onLanguageChanged: () -> Unit) {
+fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onTokens: () -> Unit, onLanguageChanged: () -> Unit) {
     val s by graph.settingsState.collectAsStateWithLifecycle()
-    val roomNoise by graph.roomNoiseState.collectAsStateWithLifecycle()
     val engineState by graph.engine.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val c = CupolaTheme.colors
@@ -69,7 +68,7 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onRoomNoise: () -> Unit,
     var advancedOpen by rememberSaveable { mutableStateOf(false) }
     val tablet = isTabletDevice(LocalContext.current)
 
-    Column(Modifier.fillMaxSize().background(c.panel).systemBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(c.panel).safeDrawingPadding()) {
         ZoneHeader(
             left = {
                 Label(stringResource(R.string.action_settings), color = c.ink)
@@ -96,18 +95,6 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onRoomNoise: () -> Unit,
                     onDecrement = { update { it.copy(customHiHz = (it.customHiHz - Settings.CUSTOM_STEP_HZ).coerceAtLeast(it.customLoHz + Settings.CUSTOM_MIN_WIDTH_HZ)) } },
                     onIncrement = { update { it.copy(customHiHz = (it.customHiHz + Settings.CUSTOM_STEP_HZ).coerceAtMost(Settings.CUSTOM_MAX_HZ)) } },
                 )
-            }
-            SettingRow(stringResource(R.string.settings_room_noise), stringResource(R.string.settings_room_noise_help)) {
-                FlowRow(verticalArrangement = Arrangement.spacedBy(6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    val rn = roomNoise
-                    Text(
-                        if (rn == null) stringResource(R.string.no_room_noise)
-                        else "%.0f dBFS · ".format(rn.rmsDbfs) + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(rn.createdAtEpochMs)),
-                        style = t.sub, color = c.dim, modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically),
-                    )
-                    PillButton(stringResource(R.string.settings_measure_noise), onClick = onRoomNoise, style = PillStyle.Primary)
-                    if (rn != null) PillButton(stringResource(R.string.settings_forget_noise), onClick = { scope.launch { graph.settings.clearRoomNoise() } }, style = PillStyle.Outline)
-                }
             }
             StepperRow(
                 stringResource(R.string.settings_a4), stringResource(R.string.settings_a4_help), "${s.a4Hz} " + stringResource(R.string.unit_hz),
@@ -151,20 +138,20 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onRoomNoise: () -> Unit,
                 label = { p -> when (p) { AudioSourcePreference.AUTO -> stringResource(R.string.source_auto); AudioSourcePreference.UNPROCESSED -> "UNPROCESSED"; AudioSourcePreference.VOICE_RECOGNITION -> "VOICE_RECOGNITION" } },
                 onSelect = { p -> scope.launch { graph.settings.update { it.copy(audioSource = p) }; if (graph.engine.isRunning) { graph.engine.stop(); graph.engine.start(p) } } },
             )
-            SettingRow(stringResource(R.string.settings_source_status), stringResource(R.string.settings_source_status_help)) {
-                val st = engineState
-                if (st is EngineState.Running) Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
-                    Badge(
-                        when (st.source.processing) {
-                            ProcessingState.DISABLED -> stringResource(R.string.processing_disabled)
-                            ProcessingState.NOT_GUARANTEED -> stringResource(R.string.processing_not_guaranteed)
-                            ProcessingState.UNVERIFIED -> stringResource(R.string.processing_unverified)
-                        },
-                    )
-                    Text("${st.source.sourceName} · ${st.source.sampleRate} " + stringResource(R.string.unit_hz), style = t.sub, color = c.dim, modifier = Modifier.padding(top = 4.dp))
-                } else {
-                    Text("—", style = t.sub, color = c.dim)
-                }
+            val st = engineState
+            val processingNow = if (st is EngineState.Running) stringResource(
+                R.string.processing_now,
+                stringResource(
+                    when (st.source.processing) {
+                        ProcessingState.DISABLED -> R.string.processing_disabled
+                        ProcessingState.NOT_GUARANTEED -> R.string.processing_not_guaranteed
+                        ProcessingState.UNVERIFIED -> R.string.processing_unverified
+                    },
+                ),
+            ) else ""
+            // no badge in the row (owner 2026‑09‑16): the processing state is explained under «?»
+            SettingRow(stringResource(R.string.settings_source_status), stringResource(R.string.settings_source_status_help) + processingNow) {
+                Text(if (st is EngineState.Running) "${st.source.sourceName} · ${st.source.sampleRate} " + stringResource(R.string.unit_hz) else "—", style = t.sub, color = c.dim)
             }
 
             SettingsSection(stringResource(R.string.settings_feedback))

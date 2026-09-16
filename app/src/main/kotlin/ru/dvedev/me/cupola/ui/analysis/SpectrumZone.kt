@@ -83,10 +83,6 @@ fun SpectrumZone(
             onToggle = onToggle,
             left = {
                 Label(stringResource(R.string.zone_spectrum))
-                if (showLegend) {
-                    Spacer(Modifier.width(10.dp))
-                    Label(stringResource(R.string.spectrum_legend))
-                }
             },
             right = {
                 if (sharePct != null && humpDb != null) {

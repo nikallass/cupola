@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -46,14 +46,14 @@ import ru.dvedev.me.cupola.ui.components.ZoneHeader
 import ru.dvedev.me.cupola.ui.theme.CupolaDimens
 import ru.dvedev.me.cupola.ui.theme.CupolaTheme
 
-private const val STEPS = 4
+private const val STEPS = 3
 
 /**
  * First-run flow (SPEC §15.5, T-059): «всё относительно» → microphone → voice type →
- * room noise (or later). Marks `onboardingDone` when finished.
+ * done. Marks `onboardingDone` when finished.
  */
 @Composable
-fun OnboardingScreen(graph: AppGraph, onRoomNoise: () -> Unit, onFinished: () -> Unit, onLanguageChanged: () -> Unit = {}) {
+fun OnboardingScreen(graph: AppGraph, onFinished: () -> Unit, onLanguageChanged: () -> Unit = {}) {
     val c = CupolaTheme.colors
     val t = CupolaTheme.type
     val context = LocalContext.current
@@ -74,7 +74,7 @@ fun OnboardingScreen(graph: AppGraph, onRoomNoise: () -> Unit, onFinished: () ->
         }
     }
 
-    Column(Modifier.fillMaxSize().background(c.panel).systemBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(c.panel).safeDrawingPadding()) {
         ZoneHeader(
             left = {
                 Label(stringResource(R.string.app_name), color = c.ink)
@@ -124,16 +124,7 @@ fun OnboardingScreen(graph: AppGraph, onRoomNoise: () -> Unit, onFinished: () ->
                             Label("%.1f–%.1f ".format(v.band.loHz / 1000, v.band.hiHz / 1000) + stringResource(R.string.unit_khz))
                         }
                     }
-                    PillButton(stringResource(R.string.ob_next), onClick = { step = 4 }, style = PillStyle.Primary)
-                }
-                else -> {
-                    Text(stringResource(R.string.ob_4_title), style = t.title, color = c.ink)
-                    Text(stringResource(R.string.ob_4_body), style = t.body, color = c.mut)
-                    Text(stringResource(R.string.noise_intro_body), style = t.body, color = c.dim)
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        PillButton(stringResource(R.string.ob_measure_now), onClick = { finish(onRoomNoise) }, style = PillStyle.Primary)
-                        PillButton(stringResource(R.string.ob_later), onClick = { finish(onFinished) }, style = PillStyle.Outline)
-                    }
+                    PillButton(stringResource(R.string.ob_done), onClick = { finish(onFinished) }, style = PillStyle.Primary)
                 }
             }
             Spacer(Modifier.height(24.dp))

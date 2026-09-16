@@ -66,7 +66,7 @@ object RingMetrics {
     const val NOISE_MARGIN = 2.0
 
     /**
-     * Measures the band in [spectrum]. With [noise] the room profile is subtracted bin by
+     * Measures the band in [spectrum]. With [noise] the adaptive noise profile is subtracted bin by
      * bin before energies and peaks are taken, so noise inside the band earns nothing and
      * noise outside it does not dilute the share.
      */

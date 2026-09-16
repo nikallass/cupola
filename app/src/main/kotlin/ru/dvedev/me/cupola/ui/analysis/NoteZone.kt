@@ -66,8 +66,7 @@ import kotlin.math.min
 
 /**
  * Zone ② «Нота» (SPEC §15.3): the note, cents scale, sub-line, cupola arc, reserved hint
- * row and the only green on the screen. Tap pins the current note as the target; long
- * press on the arc opens the room-noise measurement. [compact] (landscape column) stacks
+ * row and the only green on the screen. Tap pins the current note as the target;  [compact] (landscape column) stacks
  * the arc under the note instead of beside it.
  */
 @Composable
@@ -119,8 +118,10 @@ fun NoteZone(
                 left = { Label(stringResource(R.string.zone_note)) },
                 right = {
                     // owner 2026‑09‑16: no flickering «не считается…» / «тап — закрепить» here — only the
-                    // pinned target (and the folded note, and a dead microphone)
+                    // pinned target (and the folded note, and a dead microphone); during a game its
+                    // time and points follow on the right
                     val thresholds = LocalCentsThresholds.current
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     when {
                         // folded zone (owner 2026‑09‑16): the note itself, ▲/▼ when sharp/flat, green when in tune
                         collapsed && voiced -> {
@@ -138,6 +139,15 @@ fun NoteZone(
                         collapsed -> Box(Modifier.height(20.dp), contentAlignment = Alignment.CenterEnd) { Text("—", style = t.stats, color = c.dim, maxLines = 1) }
                         inputSilent -> Label(stringResource(R.string.mic_silent), color = c.bad)
                         targetNote != null -> Label(stringResource(R.string.target_prefix) + " " + NoteNames.label(targetNote, notation, accidentals).joined)
+                    }
+                    if (session.active) {
+                        Box(Modifier.height(20.dp), contentAlignment = Alignment.Center) {
+                            Text(formatTime(session.elapsedSec), style = t.label.copy(fontSize = t.label.fontSize * 1.15f), color = c.mut, maxLines = 1)
+                        }
+                        Box(Modifier.height(20.dp), contentAlignment = Alignment.Center) {
+                            Text(session.points.toString(), style = t.stats.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold), color = c.violetInk, maxLines = 1)
+                        }
+                    }
                     }
                 },
             )

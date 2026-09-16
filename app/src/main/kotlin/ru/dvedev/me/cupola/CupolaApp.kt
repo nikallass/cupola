@@ -7,13 +7,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.dvedev.me.cupola.analysis.SessionController
 import ru.dvedev.me.cupola.audio.AudioEngine
 import ru.dvedev.me.cupola.dsp.AnalyzerConfig
-import ru.dvedev.me.cupola.dsp.metrics.RoomNoise
 import ru.dvedev.me.cupola.dsp.session.SessionSummary
 import ru.dvedev.me.cupola.haptics.HapticsController
 import ru.dvedev.me.cupola.service.AnalysisService
@@ -37,15 +35,13 @@ class AppGraph(private val app: Application) {
     private val isTablet: Boolean = isTabletDevice(app)
 
     val settingsState: StateFlow<Settings> = settings.settings.stateIn(scope, SharingStarted.Eagerly, Settings())
-    /** The measured room noise profile, or null (the floor then adapts on its own). */
-    val roomNoiseState: StateFlow<RoomNoise?> = settings.roomNoise.stateIn(scope, SharingStarted.Eagerly, null)
 
     init {
         engine.addListener(session)
         if (app.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) installPitchTrace()
-        // keep the analyzer in sync with settings and the room profile
+        // keep the analyzer in sync with settings
         scope.launch {
-            combine(settings.settings, roomNoiseState) { s, rn -> s to rn }.collect { (s, rn) ->
+            settings.settings.collect { s ->
                 val restart = engine.config.fftSize != s.fftSize
                 engine.updateConfig {
                     it.copy(
@@ -61,8 +57,6 @@ class AppGraph(private val app: Application) {
                     engine.stop()
                     engine.start(s.audioSource)
                 }
-                val a = engine.analyzer
-                if (rn != null) a.pendingRoomNoise = rn.resampled(a.sampleRate, a.fftSize)
             }
         }
     }

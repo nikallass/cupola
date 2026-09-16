@@ -26,7 +26,6 @@
     <string name="badge_paused">пауза</string>
     <string name="badge_8s">8 с</string>
     <string name="badge_db">dB</string>
-    <string name="spectrum_legend">серая линия — шум комнаты</string>
     <string name="tap_to_pin">тап — закрепить ноту</string>
     <string name="target_prefix">Цель:</string>
     <string name="cupola">купол</string>
@@ -75,25 +74,6 @@
     <string name="summary_steady">Ровность (средняя)</string>
     <string name="summary_note">Купол считается по доле энергии в полосе и по возвышению над соседями — громкость не награждается. Сравнивайте себя с собой.</string>
 
-    <!-- room noise -->
-    <string name="noise_title">Шум комнаты</string>
-    <string name="noise_step_intro">шаг 0</string>
-    <string name="noise_step_measuring">тишина</string>
-    <string name="noise_step_result">итог</string>
-    <string name="noise_intro_title">Замер шума комнаты</string>
-    <string name="noise_intro_body">3 секунды тишины: не пойте и не говорите, пусть будет обычный фон комнаты — вентиляция, улица, компьютер. Держите устройство так, как будете заниматься.</string>
-    <string name="noise_intro_why">Профиль шума вычитается из спектра: шум в полосе купола не даст лишних очков, а шум вне её не «съест» ваш купол. Переснимите, если сменили комнату или устройство.</string>
-    <string name="noise_begin">Начать</string>
-    <string name="noise_measuring_title">Тишина</string>
-    <string name="noise_measuring_body">Не шумите: измеряем фон комнаты.</string>
-    <string name="noise_no_signal">Нет сигнала с микрофона — подождите, отсчёт начнётся, когда сигнал появится.</string>
-    <string name="noise_level">уровень</string>
-    <string name="noise_result_title">Готово</string>
-    <string name="noise_result_level">Шум комнаты</string>
-    <string name="noise_result_body">Профиль сохранится и будет вычитаться из каждого спектра.</string>
-    <string name="noise_warn_noisy">В комнате шумно (выше −45 dBFS): тихое пение будет теряться в шуме.</string>
-    <string name="noise_save">Сохранить</string>
-    <string name="noise_repeat">Повторить</string>
 
     <!-- settings -->
     <string name="settings_voice">голос</string>
@@ -102,11 +82,6 @@
     <string name="settings_band_lo">Нижняя граница купола</string>
     <string name="settings_band_hi">Верхняя граница купола</string>
     <string name="settings_band_help">Полоса, в которой считается «звон». Шаг 50 Гц, ширина не меньше 200 Гц.</string>
-    <string name="settings_room_noise">Шум комнаты</string>
-    <string name="settings_room_noise_help">3 секунды тишины: профиль фона комнаты вычитается из спектра, чтобы шум не давал очков и не прятал купол. Переснимите после смены комнаты или устройства.</string>
-    <string name="settings_measure_noise">Замерить</string>
-    <string name="settings_forget_noise">Забыть</string>
-    <string name="no_room_noise">не замерен</string>
     <string name="settings_a4">Строй A4</string>
     <string name="settings_a4_help">Частота ноты ля первой октавы. Стандарт — 440 Гц; барочный строй 415, «432» и т. п. — здесь.</string>
     <string name="settings_display">отображение</string>
@@ -139,16 +114,17 @@
     <string name="source_auto">авто</string>
     <string name="settings_source_status">Обработка звука</string>
     <string name="settings_source_status_help">Шумоподавление и автогромкость убивают полосу ~3 кГц, ради которой всё приложение. «Отключена» — устройство гарантирует сырой сигнал; «не гарантирована» — производитель мог что-то включить.</string>
+    <string name="processing_now">\n\nСейчас на этом устройстве обработка звука: %1$s.</string>
     <string name="processing_disabled">отключена</string>
     <string name="processing_not_guaranteed">не гарантирована</string>
     <string name="processing_unverified">не проверена</string>
     <string name="settings_feedback">обратная связь</string>
-    <string name="settings_haptics">Вибрация</string>
+    <string name="settings_haptics">Виброотклик</string>
     <string name="settings_haptics_help">В сессии устройство вибрирует тем чаще, чем выше балл. Вибрация может попасть в микрофон: держите телефон в руке или на мягком. На планшетах по умолчанию выключена.</string>
     <string name="settings_points_anim">Анимация очков</string>
     <string name="settings_points_anim_help">Золотые кружки из дуги купола при начислении очков.</string>
-    <string name="settings_training">Режим тренировки</string>
-    <string name="settings_training_help">Верхняя панель: «Старт», «Пауза», время сессии и очки. Выключите, если нужен только анализ голоса — панель исчезнет, а настройки откроются плавающей кнопкой в углу экрана.</string>
+    <string name="settings_training">Игровой режим</string>
+    <string name="settings_training_help">Круглая кнопка со звёздочкой запускает игру: очки, серии, подсказки; время и очки видны в заголовке «Нота». Выключите, если нужен только анализ голоса — кнопка исчезнет.</string>
     <string name="settings_hints">Подсказки</string>
     <string name="settings_hints_help">Одна строка под нотой: что произошло со звуком. Никаких технических инструкций — только «тише», «шаг назад» или «стоп».</string>
     <string name="settings_advanced">advanced</string>
@@ -162,7 +138,7 @@
     <string name="settings_confidence">Уверенность высоты</string>
     <string name="settings_confidence_help">Минимальная уверенность детектора высоты, чтобы нота считалась. Ниже — больше ложных нот, выше — пропуски на тихом звуке.</string>
     <string name="settings_ring_share">Купол: доля для максимума</string>
-    <string name="settings_ring_share_help">Какая доля энергии голоса (80 Гц – 8 кГц, без шума комнаты) должна попасть в полосу купола, чтобы дуга сомкнулась. Ниже — легче, выше — строже.</string>
+    <string name="settings_ring_share_help">Какая доля энергии голоса (80 Гц – 8 кГц, без фонового шума) должна попасть в полосу купола, чтобы дуга сомкнулась. Ниже — легче, выше — строже.</string>
     <string name="settings_ring_hump">Купол: возвышение для максимума</string>
     <string name="settings_ring_hump_help">На сколько dB пик в полосе купола должен возвышаться над соседними участками спектра, чтобы дуга сомкнулась. Громкость на это не влияет.</string>
     <string name="settings_straight_cents">Прямой тон: размах до</string>
@@ -197,11 +173,8 @@
     <string name="ob_2_body">Звук анализируется на устройстве и никуда не отправляется.</string>
     <string name="ob_3_title">Тип голоса</string>
     <string name="ob_3_body">Нужен только для полосы «купола». Не уверены — оставьте «не задан», это можно поменять в настройках.</string>
-    <string name="ob_4_title">Шум комнаты</string>
-    <string name="ob_4_body">3 секунды тишины, чтобы вычесть фон комнаты из спектра. Без замера всё работает, профиль шума подстроится сам.</string>
+    <string name="ob_done">Готово</string>
     <string name="ob_next">Дальше</string>
-    <string name="ob_measure_now">Замерить сейчас</string>
-    <string name="ob_later">Позже</string>
     <!-- why the ring is not counted (note zone header) -->
     <string name="gate_low_confidence">не считается: нота не уверена</string>
     <string name="gate_sovt">не считается: разминка</string>

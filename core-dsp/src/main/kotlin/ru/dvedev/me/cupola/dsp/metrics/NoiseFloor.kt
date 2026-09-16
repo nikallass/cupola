@@ -3,13 +3,17 @@ package ru.dvedev.me.cupola.dsp.metrics
 import kotlin.math.roundToInt
 
 /**
- * Noise floor estimate (SPEC §4, §5.2):
+ * Noise floor estimate (SPEC §4, §5.2; owner decision 2026‑09‑16: no room-noise measurement,
+ * the floor adapts on its own):
  *
  * - **RMS floor** — minimum tracker with a slow rise ([riseDbPerSecond]), so a long sung
  *   phrase does not pull the floor up; `voice = rmsDb > rmsFloorDb + 10 dB`.
- * - **Per-bin profile** — 10th percentile of recent *unvoiced* frames (decimated), used
- *   to decide whether a harmonic is audible. During the first [initSeconds] every frame
- *   feeds the profile, matching the "1 s of silence at start" procedure.
+ * - **Per-bin profile** — 10th percentile of *unvoiced* frames (the quiet pauses between
+ *   phrases) over roughly the last ten minutes. The first [fastSlots] samples are taken every
+ *   [fastDecimation] quiet frames so the floor settles within seconds of opening the app;
+ *   after that one quiet frame in [slowDecimation] is kept, so [historySlots] samples span
+ *   about ten minutes of quiet, and the ring then rolls. During the first [initSeconds] every
+ *   frame counts as quiet.
  */
 class NoiseFloor(
     val bins: Int,
@@ -17,18 +21,22 @@ class NoiseFloor(
     val initSeconds: Double = 1.0,
     val riseDbPerSecond: Double = 0.5,
     val voiceMarginDb: Double = 10.0,
-    private val historySlots: Int = 200,
-    private val decimation: Int = 2,
+    private val historySlots: Int = 600,
+    private val fastSlots: Int = 200,
+    private val fastDecimation: Int = 2,
+    private val slowDecimation: Int = 100,
     private val recomputeEveryFrames: Int = 50,
 ) {
     private val initFrames = (initSeconds / hopSeconds).roundToInt().coerceAtLeast(1)
-    private val history = Array(bins) { DoubleArray(historySlots) { Double.NaN } }
-    private val scratch = DoubleArray(historySlots)
+    // Float storage: 1025 bins × 600 samples ≈ 2.5 MB
+    private val history = Array(bins) { FloatArray(historySlots) { Float.NaN } }
+    private val scratch = FloatArray(historySlots)
     private var histHead = 0
     private var histSize = 0
     private var frames = 0L
     private var framesSincePush = 0
     private var framesSinceRecompute = 0
+    private var pushedSinceRecompute = 0
 
     /** Per-bin noise level in dB. */
     val profileDb: DoubleArray = DoubleArray(bins) { INITIAL_DB }
@@ -52,53 +60,41 @@ class NoiseFloor(
         }
         val voice = frames > initFrames && isVoice(rmsDb)
         if (!voice) {
+            val decimation = if (histSize < fastSlots) fastDecimation else slowDecimation
             if (++framesSincePush >= decimation) {
                 framesSincePush = 0
                 pushHistory(spectrumDb)
+                pushedSinceRecompute++
             }
         }
-        if (++framesSinceRecompute >= recomputeEveryFrames || (frames == initFrames.toLong())) {
+        if ((++framesSinceRecompute >= recomputeEveryFrames && pushedSinceRecompute > 0) || frames == initFrames.toLong()) {
             framesSinceRecompute = 0
+            pushedSinceRecompute = 0
             recompute()
         }
         return voice
     }
 
-    /**
-     * Starts from a measured room profile ([RoomNoise]): the profile becomes the current
-     * floor and fills the history, so it fades out only as new unvoiced frames arrive.
-     */
-    fun seed(profileDb: DoubleArray) {
-        for (b in 0 until bins) {
-            val v = profileDb[b.coerceAtMost(profileDb.size - 1)]
-            this.profileDb[b] = v
-            history[b].fill(v)
-        }
-        histHead = 0
-        histSize = historySlots
-        if (frames < initFrames) frames = initFrames.toLong()
-    }
-
     fun reset() {
-        for (h in history) h.fill(Double.NaN)
+        for (h in history) h.fill(Float.NaN)
         histHead = 0
         histSize = 0
         frames = 0
         framesSincePush = 0
         framesSinceRecompute = 0
+        pushedSinceRecompute = 0
         profileDb.fill(INITIAL_DB)
         rmsFloorDb = Double.NaN
     }
 
     private fun pushHistory(spectrumDb: DoubleArray) {
-        for (b in 0 until bins) history[b][histHead] = spectrumDb[b]
+        for (b in 0 until bins) history[b][histHead] = spectrumDb[b].toFloat()
         histHead = (histHead + 1) % historySlots
         if (histSize < historySlots) histSize++
     }
 
     private fun recompute() {
         if (histSize < MIN_HISTORY) return
-        val idx = ((histSize - 1) * PERCENTILE).roundToInt()
         for (b in 0 until bins) {
             val h = history[b]
             var n = 0
@@ -107,9 +103,27 @@ class NoiseFloor(
                 if (!v.isNaN()) scratch[n++] = v
             }
             if (n == 0) continue
-            java.util.Arrays.sort(scratch, 0, n)
-            profileDb[b] = scratch[minOf(idx, n - 1)]
+            val k = ((n - 1) * PERCENTILE).roundToInt()
+            profileDb[b] = select(scratch, n, k).toDouble()
         }
+    }
+
+    /** k-th smallest of the first [n] values (Hoare quickselect, in place) — O(n) instead of a sort per bin. */
+    private fun select(a: FloatArray, n: Int, k: Int): Float {
+        var lo = 0
+        var hi = n - 1
+        while (lo < hi) {
+            val pivot = a[(lo + hi) ushr 1]
+            var i = lo
+            var j = hi
+            while (i <= j) {
+                while (a[i] < pivot) i++
+                while (a[j] > pivot) j--
+                if (i <= j) { val t = a[i]; a[i] = a[j]; a[j] = t; i++; j-- }
+            }
+            if (k <= j) hi = j else if (k >= i) lo = i else return a[k]
+        }
+        return a[k]
     }
 
     companion object {

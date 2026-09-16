@@ -48,8 +48,6 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
     @Volatile var band: RingBand = config.band
     @Volatile var a4Hz: Double = config.a4Hz
     @Volatile var confidenceMin: Double = config.confidenceMin
-    /** A measured room profile to seed the noise floor with; applied on the analysis thread, then cleared. */
-    @Volatile var pendingRoomNoise: DoubleArray? = null
     @Volatile var includeFundamentalInOvertones: Boolean = config.includeFundamentalInOvertones
     var vibratoThresholds: ru.dvedev.me.cupola.dsp.metrics.VibratoThresholds
         get() = vibrato.thresholds
@@ -83,7 +81,6 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
     private fun analyse(raw: DoubleArray, windowed: DoubleArray, timeSec: Double): FrameMetrics {
         spectrum.compute(windowed)
         val spl = RingMetrics.splDbfs(raw)
-        pendingRoomNoise?.let { noise.seed(it); pendingRoomNoise = null }
         val voice = noise.update(spectrum.db, spl)
         val raw0 = if (voice) pitchDetector.estimate(raw, sampleRate) else ru.dvedev.me.cupola.dsp.pitch.PitchEstimate.NONE
         // spectral tracking (PitchTracker): harmonic-comb candidates + YIN octaves, continuity
