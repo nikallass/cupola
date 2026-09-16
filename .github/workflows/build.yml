@@ -46,7 +46,8 @@ jobs:
     env:
       # secrets are not allowed in step `if`s — map their presence to a plain env flag
       HAS_KEYSTORE: ${{ secrets.CUPOLA_KEYSTORE_B64 != '' }}
-      CUPOLA_KEYSTORE: ${{ runner.temp }}/cupola.jks
+      # `runner` is not available in job env: a fixed path in the workspace, ignored in git
+      CUPOLA_KEYSTORE: ${{ github.workspace }}/cupola.jks
       CUPOLA_KEYSTORE_PASSWORD: ${{ secrets.CUPOLA_KEYSTORE_PASSWORD }}
       CUPOLA_KEY_ALIAS: ${{ secrets.CUPOLA_KEY_ALIAS }}
       CUPOLA_KEY_PASSWORD: ${{ secrets.CUPOLA_KEY_PASSWORD }}
