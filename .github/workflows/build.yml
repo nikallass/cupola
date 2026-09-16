@@ -43,6 +43,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      # secrets are not allowed in step `if`s — map their presence to a plain env flag
+      HAS_KEYSTORE: ${{ secrets.CUPOLA_KEYSTORE_B64 != '' }}
+      CUPOLA_KEYSTORE: ${{ runner.temp }}/cupola.jks
+      CUPOLA_KEYSTORE_PASSWORD: ${{ secrets.CUPOLA_KEYSTORE_PASSWORD }}
+      CUPOLA_KEY_ALIAS: ${{ secrets.CUPOLA_KEY_ALIAS }}
+      CUPOLA_KEY_PASSWORD: ${{ secrets.CUPOLA_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -52,14 +59,9 @@ jobs:
       - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       - name: keystore from secrets (optional — without it the APK is signed with the debug key)
-        if: ${{ secrets.CUPOLA_KEYSTORE_B64 != '' }}
-        run: echo "${{ secrets.CUPOLA_KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/cupola.jks"
+        if: env.HAS_KEYSTORE == 'true'
+        run: echo "${{ secrets.CUPOLA_KEYSTORE_B64 }}" | base64 -d > "$CUPOLA_KEYSTORE"
       - name: assembleRelease
-        env:
-          CUPOLA_KEYSTORE: ${{ secrets.CUPOLA_KEYSTORE_B64 != '' && format('{0}/cupola.jks', runner.temp) || '' }}
-          CUPOLA_KEYSTORE_PASSWORD: ${{ secrets.CUPOLA_KEYSTORE_PASSWORD }}
-          CUPOLA_KEY_ALIAS: ${{ secrets.CUPOLA_KEY_ALIAS }}
-          CUPOLA_KEY_PASSWORD: ${{ secrets.CUPOLA_KEY_PASSWORD }}
         run: ./gradlew --no-daemon :app:assembleRelease
       - name: name the APK by tag
         run: cp app/build/outputs/apk/release/app-release.apk "cupola-${GITHUB_REF_NAME}.apk"
