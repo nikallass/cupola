@@ -1,20 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Temporary launcher icon: a cupola arc on a cream disc. Adaptive icon comes with the release (T-071). -->
+<!-- Legacy launcher icon (adaptive one: mipmap-anydpi-v26): violet disc, gold cupola, dot, spark. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FFFAF2"
-        android:pathData="M54,54m-50,0a50,50 0,1 1,100 0a50,50 0,1 1,-100 0" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#C59642"
-        android:strokeWidth="7"
-        android:strokeLineCap="round"
-        android:pathData="M24,70 A30,30 0 0 1 84,70" />
-    <path
-        android:fillColor="#20201D"
-        android:pathData="M54,70m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+    <path android:fillColor="#5A3BD0" android:pathData="M54,54m-50,0a50,50 0,1 1,100 0a50,50 0,1 1,-100 0" />
+    <path android:fillColor="#00000000" android:strokeColor="#F2B441" android:strokeWidth="10" android:strokeLineCap="round" android:pathData="M30,69 A24,24 0 0 1 78,69" />
+    <path android:fillColor="#FFF6DF" android:pathData="M54,69m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+    <path android:fillColor="#FFF6DF" android:pathData="M54,33 L56,40 L63,42 L56,44 L54,51 L52,44 L45,42 L52,40 Z" />
 </vector>

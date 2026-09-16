@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher foreground (safe zone 66 dp centred): a bold gold cupola arc, the singer's dot
+     under it and a spark at the apex — the cupola that has "closed". -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- shadow of the arc -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#40000000"
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:pathData="M30,71 A24,24 0 0 1 78,71" />
+    <!-- the arc -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F2B441"
+        android:strokeWidth="10"
+        android:strokeLineCap="round"
+        android:pathData="M30,69 A24,24 0 0 1 78,69" />
+    <!-- highlight along the top of the arc -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFE08A"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M36,62 A22,22 0 0 1 72,62" />
+    <!-- the dot -->
+    <path
+        android:fillColor="#40000000"
+        android:pathData="M54,70.5m-7.5,0a7.5,7.5 0,1 1,15 0a7.5,7.5 0,1 1,-15 0" />
+    <path
+        android:fillColor="#FFF6DF"
+        android:pathData="M54,69m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+    <!-- spark at the apex -->
+    <path
+        android:fillColor="#FFF6DF"
+        android:pathData="M54,33 L56,40 L63,42 L56,44 L54,51 L52,44 L45,42 L52,40 Z" />
+</vector>

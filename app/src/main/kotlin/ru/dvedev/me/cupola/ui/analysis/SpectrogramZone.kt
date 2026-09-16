@@ -75,7 +75,9 @@ fun SpectrogramZone(
     val colormap = remember(baseColormap, contrastPct, peakLevel) { baseColormap.adjusted(contrastPct, peakLevel) }
     val measurer = rememberTextMeasurer(cacheSize = 128) // ~25 distinct labels per frame; the default 8 thrashes
     val axisStyle = CupolaTheme.type.axis
-    val renderer = remember(history, colormap) { SpectrogramRenderer(history, colormap) }
+    // the renderer survives palette changes: a new contrast colours only the columns drawn from now on (owner 2026‑09‑16)
+    val renderer = remember(history) { SpectrogramRenderer(history, colormap) }
+    renderer.colormap = colormap
     val bandLabel = stringResource(R.string.cupola)
     val thresholds = LocalCentsThresholds.current
     val tracePaths = remember { Array(3) { Path() } }
@@ -249,7 +251,7 @@ private fun DrawScope.drawTrace(
 }
 
 /** Owns the ring bitmap and copies new history columns into it. */
-private class SpectrogramRenderer(private val history: SpectrogramHistory, private val colormap: SpectrogramColormap) {
+private class SpectrogramRenderer(private val history: SpectrogramHistory, @Volatile var colormap: SpectrogramColormap) {
     private val bitmap: Bitmap = Bitmap.createBitmap(VISIBLE_COLUMNS, history.rows, Bitmap.Config.ARGB_8888)
     private val column = IntArray(history.rows)
     private var renderedEnd = -1L

@@ -14,16 +14,30 @@ android {
         applicationId = "ru.dvedev.me.cupola"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
+    }
+
+    // Release signing: a keystore from the environment (CI secrets or a local shell), else the
+    // debug key so a release build still installs on the bench. See README «Релиз».
+    val keystorePath = System.getenv("CUPOLA_KEYSTORE").orEmpty()
+    val hasKeystore = keystorePath.isNotEmpty() && file(keystorePath).exists()
+    signingConfigs {
+        if (hasKeystore) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("CUPOLA_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("CUPOLA_KEY_ALIAS")
+                keyPassword = System.getenv("CUPOLA_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // v0.1 is not published: sign release builds with the debug key so they install directly
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasKeystore) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
 

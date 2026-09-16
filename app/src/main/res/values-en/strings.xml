@@ -116,7 +116,7 @@
     <string name="theme_light">light</string>
     <string name="theme_dark">dark</string>
     <string name="settings_sg_contrast">Spectrogram contrast</string>
-    <string name="settings_sg_contrast_help">Below 100 % everything shows, down to a grainy noise background; above it the weak parts fade to white and only bold dark peaks remain. The backdrop is never tinted. Tune it for your microphone and screen.</string>
+    <string name="settings_sg_contrast_help" formatted="false">Below 100 % everything shows, down to a grainy noise background; above it the weak parts fade to white and only bold dark peaks remain. The backdrop is never tinted. Tune it for your microphone and screen.</string>
     <string name="settings_log_axis">Logarithmic frequency axis</string>
     <string name="settings_log_axis_help">Log axis gives octaves equal space — natural for voice. Linear stretches the top.</string>
     <string name="settings_fft">Analysis window</string>

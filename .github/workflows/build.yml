@@ -1,0 +1,76 @@
+name: build
+
+on:
+  push:
+    branches: [master, main]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  check:
+    name: tests, lint, debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: check (JVM tests, no-android-imports guard, lint)
+        run: ./gradlew --no-daemon check
+      - name: assembleDebug
+        run: ./gradlew --no-daemon :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cupola-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports
+          path: |
+            core-dsp/build/reports/tests/test
+            core-notation/build/reports/tests/test
+            app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
+
+  release:
+    name: release APK on tag
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: keystore from secrets (optional — without it the APK is signed with the debug key)
+        if: ${{ secrets.CUPOLA_KEYSTORE_B64 != '' }}
+        run: echo "${{ secrets.CUPOLA_KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/cupola.jks"
+      - name: assembleRelease
+        env:
+          CUPOLA_KEYSTORE: ${{ secrets.CUPOLA_KEYSTORE_B64 != '' && format('{0}/cupola.jks', runner.temp) || '' }}
+          CUPOLA_KEYSTORE_PASSWORD: ${{ secrets.CUPOLA_KEYSTORE_PASSWORD }}
+          CUPOLA_KEY_ALIAS: ${{ secrets.CUPOLA_KEY_ALIAS }}
+          CUPOLA_KEY_PASSWORD: ${{ secrets.CUPOLA_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon :app:assembleRelease
+      - name: name the APK by tag
+        run: cp app/build/outputs/apk/release/app-release.apk "cupola-${GITHUB_REF_NAME}.apk"
+      - name: release notes from CHANGELOG
+        run: |
+          awk -v tag="${GITHUB_REF_NAME#v}" '
+            /^## / { if (found) exit; if (index($0, tag)) { found = 1 } ; next }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "Cupola ${GITHUB_REF_NAME}" > notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: cupola-${{ github.ref_name }}.apk
+          body_path: notes.md

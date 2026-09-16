@@ -22,3 +22,6 @@ Thumbs.db
 
 # local listening material (copyrighted recordings)
 audio-samples/
+
+# the owner's phone screenshots for UI review
+screenshots/
