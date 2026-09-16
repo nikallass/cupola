@@ -128,7 +128,10 @@ fun NoteZone(
                                 display.cents < -thresholds.ok -> " ▼"
                                 else -> ""
                             }
-                            Text(name + arrow, style = t.stats, color = centsColor(display.cents), maxLines = 1)
+                            // fixed box: the ▲/▼ glyph comes from a taller fallback font and would resize the header
+                            Box(Modifier.height(20.dp), contentAlignment = Alignment.CenterEnd) {
+                                Text(name + arrow, style = t.stats, color = centsColor(display.cents), maxLines = 1, softWrap = false)
+                            }
                         }
                         collapsed -> Label("—")
                         gateText != null -> Label(gateText, color = c.warn)

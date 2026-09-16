@@ -53,8 +53,6 @@ fun SpectrumZone(
     /** Live cupola readout for the header: share of energy in the band, %, and hump, dB (NaN/null = none). */
     sharePct: Double?,
     humpDb: Double?,
-    /** The displayed (400 ms mean, held) fundamental for the harmonic lines and numbers; 0 = none. */
-    noteF0Hz: Double,
     paused: Boolean,
     /** Running maximum of the spectrogram normalisation; the dB axis follows it. */
     topDb: () -> Float,
@@ -176,9 +174,10 @@ fun SpectrumZone(
             fill.lineTo(gutterL + plotW, gutterT + plotH)
             fill.close()
             clipRect(gutterL, gutterT, gutterL + plotW, gutterT + plotH) {
-                // harmonic series of the DISPLAYED note (owner 2026‑09‑16: the smoothed f0, so the
+                // harmonic series of the note, f0 smoothed like the bins (owner 2026‑09‑16), so the
                 // lines and numbers do not twitch with every frame): vertical dashed lines with
                 // the harmonic number where each line meets the top edge
+                val noteF0Hz = if (frame.voiced) frame.smoothF0Hz else 0.0
                 if (noteF0Hz > 0) {
                     val dash = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 4.dp.toPx()))
                     val gap = 3.dp.toPx()

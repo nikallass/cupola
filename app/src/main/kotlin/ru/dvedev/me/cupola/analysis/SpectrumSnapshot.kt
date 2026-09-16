@@ -15,10 +15,12 @@ import ru.dvedev.me.cupola.dsp.metrics.NoiseFloor
 class SpectrumSnapshot(
     private val hopSeconds: Double = 0.01,
     private val riseSeconds: Double = 0.15,
-    private val fallSeconds: Double = 0.4,
+    private val fallSeconds: Double = 0.34,
     private val noise: () -> NoiseFloor?,
 ) : FrameListener {
     private var ema: FloatArray = FloatArray(0)
+    private var f0Log = Double.NaN
+    private var lastVoiced = false
     private val riseAlpha = (1.0 - kotlin.math.exp(-hopSeconds / riseSeconds)).toFloat()
     private val fallAlpha = (1.0 - kotlin.math.exp(-hopSeconds / fallSeconds)).toFloat()
 
@@ -28,6 +30,8 @@ class SpectrumSnapshot(
         var binHz = 0.0
         var harmonics: List<Harmonic> = emptyList()
         var f0Hz = 0.0
+        /** f0 smoothed with the spectrum's own rise time, so the harmonic lines move with the peaks. */
+        var smoothF0Hz = 0.0
         var voiced = false
         var timeSec = 0.0
     }
@@ -48,6 +52,7 @@ class SpectrumSnapshot(
         f.binHz = src.binHz
         f.harmonics = src.harmonics
         f.f0Hz = src.f0Hz
+        f.smoothF0Hz = src.smoothF0Hz
         f.voiced = src.voiced
         f.timeSec = src.timeSec
         frozen = f
@@ -77,6 +82,14 @@ class SpectrumSnapshot(
         f.binHz = spectrum.binHz
         f.harmonics = metrics.harmonics
         f.f0Hz = metrics.f0Hz
+        // harmonic lines follow the peaks (owner 2026‑09‑16): the same rise constant as the
+        // bins, in the log domain; a new phrase snaps, silence keeps the last value
+        if (metrics.voiced && metrics.f0Hz > 0) {
+            val target = kotlin.math.ln(metrics.f0Hz)
+            f0Log = if (f0Log.isNaN() || !lastVoiced) target else f0Log + (target - f0Log) * riseAlpha
+        }
+        lastVoiced = metrics.voiced && metrics.f0Hz > 0
+        f.smoothF0Hz = if (f0Log.isNaN()) 0.0 else kotlin.math.exp(f0Log)
         f.voiced = metrics.voiced
         f.timeSec = metrics.timeSec
         current = next
