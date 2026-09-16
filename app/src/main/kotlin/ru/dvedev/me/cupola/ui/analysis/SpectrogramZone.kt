@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -106,17 +107,22 @@ fun SpectrogramZone(
                     Badge(stringResource(R.string.badge_paused))
                 }
             },
-            right = { Label(stringResource(if (history.logScale) R.string.spectrogram_axis_hint else R.string.spectrogram_axis_hint_lin)) },
         )
         if (collapsed) return@Column
         var plotWidthPx by remember { mutableFloatStateOf(1f) }
+        // the gesture detector must survive zoom changes: keyed only on `paused`, it reads the
+        // latest span and callbacks through updated state (keying on the span restarted it on
+        // every step and cut the pinch off after a few milliseconds)
+        val spanNow by rememberUpdatedState(visibleColumns)
+        val zoomNow by rememberUpdatedState(onZoom)
+        val scrollNow by rememberUpdatedState(onScroll)
         Box(Modifier.fillMaxSize()) {
             Canvas(
-                Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }.pointerInput(paused, visibleColumns) {
+                Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }.pointerInput(paused) {
                     // pinch (live and paused) squeezes or stretches the time axis; while paused a drag scrolls back
                     detectTransformGestures { _, pan, zoom, _ ->
-                        if (zoom != 1f) onZoom(zoom)
-                        if (paused && pan.x != 0f) onScroll((pan.x / (plotWidthPx / visibleColumns)).toInt())
+                        if (zoom != 1f) zoomNow(zoom)
+                        if (paused && pan.x != 0f) scrollNow((pan.x / (plotWidthPx / spanNow)).toInt())
                     }
                 },
             ) {

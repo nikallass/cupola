@@ -58,12 +58,15 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
     val viewEnd: Long? get() = pausedHead?.let { (it - scrollColumns).coerceAtLeast(0) }
 
     /** Visible spectrogram time span in columns (10 ms each): 2…30 s, pinch on the spectrogram. */
+    private var spanExact = 800f
     var spectrogramSpan: Int by mutableStateOf(800)
         private set
 
     fun zoomSpectrogram(factor: Float) {
         if (factor <= 0f) return
-        spectrogramSpan = (spectrogramSpan / factor).toInt().coerceIn(200, 3000)
+        // exact float span: per-event pinch factors are ~1.01, integer truncation would eat them
+        spanExact = (spanExact / factor).coerceIn(200f, 3000f)
+        spectrogramSpan = spanExact.toInt()
         scrollBy(0)
     }
 
