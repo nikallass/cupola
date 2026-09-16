@@ -12,7 +12,7 @@ import kotlin.math.roundToInt
  * a gamma of 1.15 so that quiet content stays close to the panel colour.
  */
 @Immutable
-class SpectrogramColormap(stops: List<Color>) {
+class SpectrogramColormap(private val stops: List<Color>) {
     val lut: IntArray = IntArray(SIZE)
 
     init {
@@ -31,6 +31,26 @@ class SpectrogramColormap(stops: List<Color>) {
 
     /** ARGB for a level in `0f..1f`. */
     fun argb(level: Float): Int = lut[(level.coerceIn(0f, 1f) * (SIZE - 1)).roundToInt()]
+
+    /**
+     * The same palette with the level remapped before lookup (owner 2026‑09‑16: devices differ,
+     * so brightness and contrast are settings): `level' = (level − 0.5)·contrast + 0.5 + brightness`.
+     * [brightnessPct] −50…50, [contrastPct] 50…300.
+     */
+    fun adjusted(brightnessPct: Int, contrastPct: Int): SpectrogramColormap {
+        if (brightnessPct == 0 && contrastPct == 100) return this
+        val out = SpectrogramColormap(this)
+        val b = brightnessPct / 100f
+        val k = contrastPct / 100f
+        for (i in 0 until SIZE) {
+            val x = i / (SIZE - 1).toFloat()
+            val y = ((x - 0.5f) * k + 0.5f + b).coerceIn(0f, 1f)
+            out.lut[i] = lut[(y * (SIZE - 1)).roundToInt()]
+        }
+        return out
+    }
+
+    private constructor(source: SpectrogramColormap) : this(source.stops)
 
     companion object {
         const val SIZE = 256

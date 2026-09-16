@@ -115,6 +115,10 @@
     <string name="theme_system">system</string>
     <string name="theme_light">light</string>
     <string name="theme_dark">dark</string>
+    <string name="settings_sg_brightness">Spectrogram: brightness</string>
+    <string name="settings_sg_brightness_help">Shifts the overall tone of the spectrogram: plus — lighter, weak overtones show; minus — darker, cleaner background. Tune it for your microphone and screen.</string>
+    <string name="settings_sg_contrast">Spectrogram: contrast</string>
+    <string name="settings_sg_contrast_help">Stretches the difference between peaks and background around the mid tone: more — sharper peaks, paler background; less — softer.</string>
     <string name="settings_log_axis">Logarithmic frequency axis</string>
     <string name="settings_log_axis_help">Log axis gives octaves equal space — natural for voice. Linear stretches the top.</string>
     <string name="settings_fft">Analysis window</string>

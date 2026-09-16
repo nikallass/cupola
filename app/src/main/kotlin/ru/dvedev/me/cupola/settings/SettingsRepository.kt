@@ -84,6 +84,8 @@ class SettingsRepository(context: Context) {
             language = enum(K_LANGUAGE, d.language, Language.entries.toTypedArray()),
             theme = enum(K_THEME, d.theme, ThemeMode.entries.toTypedArray()),
             logFrequencyAxis = this[booleanPreferencesKey(K_LOG_AXIS)] ?: d.logFrequencyAxis,
+            spectrogramBrightness = this[intPreferencesKey(K_SG_BRIGHT)] ?: d.spectrogramBrightness,
+            spectrogramContrast = this[intPreferencesKey(K_SG_CONTRAST)] ?: d.spectrogramContrast,
             fftSize = this[intPreferencesKey(K_FFT)] ?: d.fftSize,
             audioSource = enum(K_SOURCE, d.audioSource, AudioSourcePreference.entries.toTypedArray()),
             haptics = this[booleanPreferencesKey(K_HAPTICS)],
@@ -116,6 +118,8 @@ class SettingsRepository(context: Context) {
         this[stringPreferencesKey(K_LANGUAGE)] = s.language.name
         this[stringPreferencesKey(K_THEME)] = s.theme.name
         this[booleanPreferencesKey(K_LOG_AXIS)] = s.logFrequencyAxis
+        this[intPreferencesKey(K_SG_BRIGHT)] = s.spectrogramBrightness
+        this[intPreferencesKey(K_SG_CONTRAST)] = s.spectrogramContrast
         this[intPreferencesKey(K_FFT)] = s.fftSize
         this[stringPreferencesKey(K_SOURCE)] = s.audioSource.name
         val h = s.haptics
@@ -151,6 +155,8 @@ class SettingsRepository(context: Context) {
         private const val K_LANGUAGE = "language"
         private const val K_THEME = "theme"
         private const val K_LOG_AXIS = "logFrequencyAxis"
+        private const val K_SG_BRIGHT = "spectrogramBrightness"
+        private const val K_SG_CONTRAST = "spectrogramContrast"
         private const val K_FFT = "fftSize"
         private const val K_SOURCE = "audioSource"
         private const val K_HAPTICS = "haptics"

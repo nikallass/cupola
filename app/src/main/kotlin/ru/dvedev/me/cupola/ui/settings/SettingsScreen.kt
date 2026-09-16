@@ -133,6 +133,10 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onRoomNoise: () -> Unit,
                 onSelect = { m -> update { it.copy(theme = m) } },
             )
             SwitchRow(stringResource(R.string.settings_log_axis), stringResource(R.string.settings_log_axis_help), s.logFrequencyAxis) { v -> update { it.copy(logFrequencyAxis = v) } }
+            StepperRow(stringResource(R.string.settings_sg_brightness), stringResource(R.string.settings_sg_brightness_help), "%+d %%".format(s.spectrogramBrightness),
+                onDecrement = { update { it.copy(spectrogramBrightness = (it.spectrogramBrightness - 5).coerceAtLeast(-50)) } }, onIncrement = { update { it.copy(spectrogramBrightness = (it.spectrogramBrightness + 5).coerceAtMost(50)) } })
+            StepperRow(stringResource(R.string.settings_sg_contrast), stringResource(R.string.settings_sg_contrast_help), "${s.spectrogramContrast} %",
+                onDecrement = { update { it.copy(spectrogramContrast = (it.spectrogramContrast - 10).coerceAtLeast(50)) } }, onIncrement = { update { it.copy(spectrogramContrast = (it.spectrogramContrast + 10).coerceAtMost(300)) } })
             ChoiceRow(
                 stringResource(R.string.settings_fft), stringResource(R.string.settings_fft_help), s.fftSize, Settings.FFT_SIZES,
                 label = { n -> n.toString() },

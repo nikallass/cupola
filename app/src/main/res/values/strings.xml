@@ -123,6 +123,10 @@
     <string name="theme_system">система</string>
     <string name="theme_light">светлая</string>
     <string name="theme_dark">тёмная</string>
+    <string name="settings_sg_brightness">Спектрограмма: яркость</string>
+    <string name="settings_sg_brightness_help">Сдвигает общий тон спектрограммы: плюс — светлее и заметнее слабые обертоны, минус — темнее, чище фон. Подберите под микрофон и экран.</string>
+    <string name="settings_sg_contrast">Спектрограмма: контраст</string>
+    <string name="settings_sg_contrast_help">Растягивает разницу между пиками и фоном вокруг средней яркости: больше — пики резче, фон бледнее; меньше — мягче.</string>
     <string name="settings_log_axis">Логарифмическая шкала частот</string>
     <string name="settings_log_axis_help">Лог-шкала показывает октавы равными промежутками — удобно для голоса. Линейная растягивает верх.</string>
     <string name="settings_fft">Окно анализа</string>
