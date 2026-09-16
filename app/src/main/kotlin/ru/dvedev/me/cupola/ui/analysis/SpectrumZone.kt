@@ -139,11 +139,7 @@ fun SpectrumZone(
             // cupola band
             val bx0 = xOf(band.loHz)
             val bx1 = xOf(band.hiHz)
-            // cupola band: a light violet tint with violet edges (owner 2026‑09‑16: gold on gold
-            // vanished under the fill while singing)
-            drawRect(c.violet.copy(alpha = 0.10f), topLeft = Offset(bx0, gutterT), size = Size(bx1 - bx0, plotH))
-            drawLine(c.violet.copy(alpha = 0.6f), Offset(bx0, gutterT), Offset(bx0, gutterT + plotH), strokeWidth = 1.5.dp.toPx())
-            drawLine(c.violet.copy(alpha = 0.6f), Offset(bx1, gutterT), Offset(bx1, gutterT + plotH), strokeWidth = 1.5.dp.toPx())
+            drawRect(c.gold.copy(alpha = 0.10f), topLeft = Offset(bx0, gutterT), size = Size(bx1 - bx0, plotH))
 
             val frame = snapshot.latest ?: return@Canvas
             val binHz = frame.binHz
