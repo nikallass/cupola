@@ -152,6 +152,7 @@
     <string name="settings_log">App log</string>
     <string name="settings_log_help">Saves this run\'s log to a file: device, version, microphone opening, errors. The file is not sent anywhere — send it along when something does not work.</string>
     <string name="settings_log_save">Save log</string>
+    <string name="mic_taken">the microphone is taken by another app</string>
     <string name="mic_silent">waiting for the microphone signal</string>
     <string name="footer_open_source">Cupola is open source: the code, builds and change history are on GitHub.</string>
     <string name="footer_github">Project on GitHub</string>

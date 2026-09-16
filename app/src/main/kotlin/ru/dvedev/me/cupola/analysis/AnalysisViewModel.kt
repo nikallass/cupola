@@ -98,6 +98,7 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
 
     /** The microphone delivers silence (busy or silenced by the system); the note zone says so. */
     val inputSilent: StateFlow<Boolean> = engine.inputSilent
+    val micTaken: StateFlow<Boolean> = engine.micTaken
 
     /** Called on ON_STOP; the microphone keeps running only inside a session (T-042). */
     fun stopListeningIfIdle() {

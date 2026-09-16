@@ -87,6 +87,8 @@ fun NoteZone(
     onPickNote: () -> Unit = {},
     /** The microphone is delivering silence (busy or silenced by the system). */
     inputSilent: Boolean = false,
+    /** …and another app's capture holds it. */
+    micTaken: Boolean = false,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
     collapsed: Boolean = false,
@@ -137,7 +139,7 @@ fun NoteZone(
                             }
                         }
                         collapsed -> Box(Modifier.height(20.dp), contentAlignment = Alignment.CenterEnd) { Text("—", style = t.stats, color = c.dim, maxLines = 1) }
-                        inputSilent -> Label(stringResource(R.string.mic_silent), color = c.warn)
+                        inputSilent -> Label(stringResource(if (micTaken) R.string.mic_taken else R.string.mic_silent), color = c.warn)
                         targetNote != null -> Label(stringResource(R.string.target_prefix) + " " + NoteNames.label(targetNote, notation, accidentals).joined)
                     }
                     if (session.active) {

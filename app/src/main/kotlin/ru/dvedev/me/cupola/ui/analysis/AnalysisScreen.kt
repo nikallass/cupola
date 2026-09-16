@@ -70,6 +70,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit) {
     val displayNote = if (vm.paused) (vm.frozenNote ?: liveNote) else liveNote
     val session by vm.session.state.collectAsStateWithLifecycle()
     val inputSilent by vm.inputSilent.collectAsStateWithLifecycle()
+    val micTaken by vm.micTaken.collectAsStateWithLifecycle()
     var pickerOpen by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     // Android 13+: ask for notification permission once, right before the first session
@@ -127,7 +128,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit) {
                 NoteZone(
                     metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote,
                     notation = notation, accidentals = accidentals, hintsEnabled = settings.hints, pointsAnimation = settings.pointsAnimation,
-                    onTapNote = { vm.toggleTarget(it) }, onLongPressArc = {}, onGiveTone = { vm.playTargetTone() }, onPickNote = { pickerOpen = true }, inputSilent = inputSilent,
+                    onTapNote = { vm.toggleTarget(it) }, onLongPressArc = {}, onGiveTone = { vm.playTargetTone() }, onPickNote = { pickerOpen = true }, inputSilent = inputSilent, micTaken = micTaken,
                     modifier = mod, compact = compact,
                     collapsed = noteFolded, onToggle = { noteFolded = !noteFolded },
                 )

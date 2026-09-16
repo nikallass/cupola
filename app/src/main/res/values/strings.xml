@@ -160,6 +160,7 @@
     <string name="settings_log">Лог приложения</string>
     <string name="settings_log_help">Сохраняет в файл журнал этого запуска: устройство, версия, открытие микрофона, ошибки. Файл никуда не отправляется — пришлите его, если что-то не работает.</string>
     <string name="settings_log_save">Сохранить лог</string>
+    <string name="mic_taken">микрофон занят другим приложением</string>
     <string name="mic_silent">ожидание сигнала с микрофона</string>
     <string name="footer_open_source">Купол — открытое приложение: код, сборки и история изменений на GitHub.</string>
     <string name="footer_github">Проект на GitHub</string>

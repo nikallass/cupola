@@ -52,6 +52,10 @@ class AudioEngine(
     /** True while the microphone delivers digital silence or the client is silenced by policy (see the watchdog in [start]). */
     private val _inputSilent = MutableStateFlow(false)
     val inputSilent: StateFlow<Boolean> = _inputSilent
+
+    /** While silent: another app's capture holds the microphone (e.g. a video recording). */
+    private val _micTaken = MutableStateFlow(false)
+    val micTaken: StateFlow<Boolean> = _micTaken
     @Volatile private var lastPreference: AudioSourcePreference = AudioSourcePreference.AUTO
     val state: StateFlow<EngineState> = _state.asStateFlow()
 
@@ -154,7 +158,11 @@ class AudioEngine(
                         // the policy is asked every 50 chunks and its answer is kept until the next ask
                         // (reading it as "false" in between made the on-screen flag blink every 0.5 s)
                         val checkedNow = ++chunksSinceCheck >= 50
-                        if (checkedNow) { chunksSinceCheck = 0; policySilenced = capture.isClientSilenced() }
+                        if (checkedNow) {
+                            chunksSinceCheck = 0
+                            policySilenced = capture.isClientSilenced()
+                            _micTaken.value = policySilenced && capture.micTakenByOther()
+                        }
                         // flag on: long zeros or silenced by policy; flag off only after 0.2 s of real signal
                         val silent = if (_inputSilent.value) policySilenced || aliveChunks * hop.toDouble() / status.sampleRate < 0.2
                             else silentSeconds >= SILENCE_FLAG_SECONDS || policySilenced
@@ -166,6 +174,7 @@ class AudioEngine(
                                 lastDiagNanos = now
                                 MicJournal.add("input silent: zeros ${"%.1f".format(silentSeconds)} s, policySilenced=$policySilenced — ${capture.diagnostics()}", warn = true)
                             } else {
+                                _micTaken.value = false
                                 MicJournal.add("input alive after ${"%.1f".format((now - silentSinceNanos) / 1e9)} s of silence (reopens=$reopens) — ${capture.diagnostics()}")
                                 reopens = 0
                             }

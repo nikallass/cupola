@@ -41,6 +41,7 @@ class AudioCapture(context: Context) {
         sb.append(" audioMode=").append(audioManager.mode).append(" micMute=").append(audioManager.isMicrophoneMute)
         val r = record
         sb.append(" ourSession=").append(r?.audioSessionId ?: -1).append(" recState=").append(r?.recordingState ?: -1)
+        if (android.os.Build.VERSION.SDK_INT >= 30 && r != null) sb.append(" privacySensitive=").append(r.isPrivacySensitive)
         if (android.os.Build.VERSION.SDK_INT >= 29 && r != null) {
             val own = r.activeRecordingConfiguration
             sb.append(" own=").append(if (own == null) "none" else "src${own.clientAudioSource}/silenced=${own.isClientSilenced}/dev=${own.audioDevice?.type}")
@@ -56,6 +57,15 @@ class AudioCapture(context: Context) {
         sb.append("]")
         sb.toString()
     }.getOrElse { "diagnostics failed: $it" }
+
+    /** True when another app's capture is active and not silenced while ours is silenced — the microphone is taken. */
+    fun micTakenByOther(): Boolean = runCatching {
+        if (android.os.Build.VERSION.SDK_INT < 29) return false
+        val session = record?.audioSessionId ?: return false
+        val configs = audioManager.activeRecordingConfigurations
+        val own = configs.firstOrNull { it.clientAudioSessionId == session }
+        (own == null || own.isClientSilenced) && configs.any { it.clientAudioSessionId != session && !it.isClientSilenced }
+    }.getOrDefault(false)
 
     private var callback: AudioManager.AudioRecordingCallback? = null
 
@@ -107,6 +117,13 @@ class AudioCapture(context: Context) {
                 val bufferBytes = minBytes * BUFFER_MULTIPLIER
                 val candidate = try {
                     AudioRecord.Builder()
+                        .apply {
+                            // privacy-sensitive capture (Android 11+): the OnePlus logs of 2026‑09‑16 showed another
+                            // app holding a CAMCORDER capture — a privacy-sensitive source that wins over ordinary
+                            // captures, so we heard zeros while on screen. Between two privacy-sensitive captures
+                            // the most recent starter gets the audio, so opening (and reopening) wins it back.
+                            if (android.os.Build.VERSION.SDK_INT >= 30) setPrivacySensitive(true)
+                        }
                         .setAudioSource(source)
                         .setAudioFormat(
                             AudioFormat.Builder()
