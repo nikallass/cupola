@@ -109,6 +109,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
             val spectrumZone: @Composable (Modifier, Boolean) -> Unit = { mod, legend ->
                 SpectrumZone(
                     snapshot = vm.spectrum, band = band, sharePct = displayNote.ringSharePct, humpDb = displayNote.humpDb,
+                    noteF0Hz = if (displayNote.voiced) displayNote.f0Hz else 0.0,
                     paused = vm.paused, topDb = { vm.spectrogram.topDb }, logScale = settings.logFrequencyAxis,
                     showLegend = legend, collapsed = spectrumFolded, onToggle = { spectrumFolded = !spectrumFolded },
                     modifier = mod,

@@ -118,7 +118,19 @@ fun NoteZone(
                         Gate.SOVT -> stringResource(R.string.gate_sovt)
                         else -> null
                     } else null
+                    val thresholds = LocalCentsThresholds.current
                     when {
+                        // folded zone (owner 2026‑09‑16): the note itself, ▲/▼ when sharp/flat, green when in tune
+                        collapsed && voiced -> {
+                            val name = if (notation == NotationMode.EN) NoteNames.en(display.note, accidentals) else NoteNames.ruShort(display.note, accidentals) + " · " + NoteNames.en(display.note, accidentals)
+                            val arrow = when {
+                                display.cents > thresholds.ok -> " ▲"
+                                display.cents < -thresholds.ok -> " ▼"
+                                else -> ""
+                            }
+                            Text(name + arrow, style = t.stats, color = centsColor(display.cents), maxLines = 1)
+                        }
+                        collapsed -> Label("—")
                         gateText != null -> Label(gateText, color = c.warn)
                         targetNote != null -> Label(stringResource(R.string.target_prefix) + " " + NoteNames.label(targetNote, notation, accidentals).joined)
                         else -> Label(stringResource(R.string.tap_to_pin))

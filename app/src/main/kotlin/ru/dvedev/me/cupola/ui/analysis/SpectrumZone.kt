@@ -44,7 +44,7 @@ private const val PX_STEP = 2
 
 /**
  * Zone ④ «Спектр» (SPEC §15.3, T-054): log-x spectrum with gold fill, cupola band, dashed
- * harmonic envelope, harmonic numbers, dashed noise floor.
+ * harmonic lines of the displayed note with their numbers at the top edge, thin noise floor.
  */
 @Composable
 fun SpectrumZone(
@@ -53,6 +53,8 @@ fun SpectrumZone(
     /** Live cupola readout for the header: share of energy in the band, %, and hump, dB (NaN/null = none). */
     sharePct: Double?,
     humpDb: Double?,
+    /** The displayed (400 ms mean, held) fundamental for the harmonic lines and numbers; 0 = none. */
+    noteF0Hz: Double,
     paused: Boolean,
     /** Running maximum of the spectrogram normalisation; the dB axis follows it. */
     topDb: () -> Float,
@@ -75,7 +77,6 @@ fun SpectrumZone(
     }
     val curve = remember { Path() }
     val fill = remember { Path() }
-    val envelope = remember { Path() }
     val floor = remember { Path() }
 
     Column(modifier.background(c.panel)) {
@@ -175,15 +176,28 @@ fun SpectrumZone(
             fill.lineTo(gutterL + plotW, gutterT + plotH)
             fill.close()
             clipRect(gutterL, gutterT, gutterL + plotW, gutterT + plotH) {
-                // harmonic series of the sung note: vertical dashed lines (reference site)
-                if (frame.voiced && frame.f0Hz > 0) {
+                // harmonic series of the DISPLAYED note (owner 2026‑09‑16: the smoothed f0, so the
+                // lines and numbers do not twitch with every frame): vertical dashed lines with
+                // the harmonic number where each line meets the top edge
+                if (noteF0Hz > 0) {
                     val dash = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 4.dp.toPx()))
+                    val gap = 3.dp.toPx()
+                    var lastLabelRight = -1000f
                     var k = 1
-                    while (k * frame.f0Hz < F_MAX && k <= 64) {
-                        val hz = k * frame.f0Hz
+                    while (k * noteF0Hz < F_MAX && k <= 64) {
+                        val hz = k * noteF0Hz
                         if (hz >= F_MIN) {
                             val x = xOf(hz)
-                            drawLine(c.ink.copy(alpha = 0.35f), Offset(x, gutterT), Offset(x, gutterT + plotH), strokeWidth = 1f, pathEffect = dash)
+                            drawLine(c.ink.copy(alpha = 0.35f), Offset(x, gutterT), Offset(x, gutterT + plotH), strokeWidth = 2f, pathEffect = dash)
+                            if (k <= 16) {
+                                val label = k.toString()
+                                val m = measurer.measure(label, axisStyle)
+                                val left = x - m.size.width / 2
+                                if (left - lastLabelRight >= gap) {
+                                    drawLabel(measurer, label, Offset(left, gutterT + 1.dp.toPx()), axisStyle.copy(color = c.mut))
+                                    lastLabelRight = left + m.size.width
+                                }
+                            }
                         }
                         k++
                     }
@@ -202,33 +216,6 @@ fun SpectrumZone(
                     i += 6
                 }
                 drawPath(floor, c.dim.copy(alpha = 0.45f), style = Stroke(1f))
-                // harmonic envelope + numbers
-                val hs = frame.harmonics.filter { it.audible && it.hz in F_MIN..F_MAX }
-                if (hs.size >= 2) {
-                    envelope.reset()
-                    hs.forEachIndexed { idx, h ->
-                        val x = xOf(h.hz)
-                        val y = yOf(h.levelDb.toFloat()) - 3.dp.toPx()
-                        if (idx == 0) envelope.moveTo(x, y) else envelope.lineTo(x, y)
-                    }
-                    drawPath(envelope, c.mut, style = Stroke(1f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 4f))))
-                }
-                var lastLabelRight = -1000f
-                val gap = 4.dp.toPx()
-                for (h in hs) {
-                    val x = xOf(h.hz)
-                    val y = yOf(h.levelDb.toFloat())
-                    drawLine(c.mut, Offset(x, y - 2.dp.toPx()), Offset(x, y - 6.dp.toPx()), strokeWidth = 1f)
-                    if (h.k <= 16) {
-                        val label = h.k.toString()
-                        val m = measurer.measure(label, axisStyle)
-                        val left = x - m.size.width / 2
-                        if (left - lastLabelRight >= gap) {
-                            drawLabel(measurer, label, Offset(left, (y - 8.dp.toPx() - m.size.height).coerceAtLeast(gutterT)), axisStyle.copy(color = c.mut))
-                            lastLabelRight = left + m.size.width
-                        }
-                    }
-                }
             }
         }
     }

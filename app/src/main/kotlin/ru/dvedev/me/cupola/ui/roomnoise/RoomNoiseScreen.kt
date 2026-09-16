@@ -116,7 +116,7 @@ fun RoomNoiseScreen(vm: RoomNoiseViewModel, band: RingBand, onDone: () -> Unit, 
         }
         ZoneDivider()
         SpectrumZone(
-            snapshot = vm.spectrum, band = band, sharePct = null, humpDb = null, paused = false,
+            snapshot = vm.spectrum, band = band, sharePct = null, humpDb = null, noteF0Hz = 0.0, paused = false,
             topDb = { -30f },
             modifier = Modifier.fillMaxWidth().height(220.dp),
         )
