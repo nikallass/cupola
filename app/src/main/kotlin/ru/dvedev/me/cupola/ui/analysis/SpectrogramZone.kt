@@ -142,11 +142,12 @@ fun SpectrogramZone(
                     // cupola band
                     val yHi = history.yFraction(band.hiHz) * plotH
                     val yLo = history.yFraction(band.loHz) * plotH
-                    drawRect(c.gold.copy(alpha = 0.10f), topLeft = Offset(gutterL, yHi), size = Size(plotW, yLo - yHi))
+                    // cupola band: violet tint and edges so it stays visible over the dense gold of a sung phrase
+                    drawRect(c.violet.copy(alpha = 0.10f), topLeft = Offset(gutterL, yHi), size = Size(plotW, yLo - yHi))
                     val dash = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx()))
-                    drawLine(c.gold, Offset(gutterL, yHi), Offset(gutterL + plotW, yHi), strokeWidth = 1f, pathEffect = dash)
-                    drawLine(c.gold, Offset(gutterL, yLo), Offset(gutterL + plotW, yLo), strokeWidth = 1f, pathEffect = dash)
-                    drawLabel(measurer, bandLabel, Offset(gutterL + 6.dp.toPx(), yHi - 12.dp.toPx()), axisStyle.copy(color = c.goldInk))
+                    drawLine(c.violet.copy(alpha = 0.8f), Offset(gutterL, yHi), Offset(gutterL + plotW, yHi), strokeWidth = 1.5.dp.toPx(), pathEffect = dash)
+                    drawLine(c.violet.copy(alpha = 0.8f), Offset(gutterL, yLo), Offset(gutterL + plotW, yLo), strokeWidth = 1.5.dp.toPx(), pathEffect = dash)
+                    drawLabel(measurer, bandLabel, Offset(gutterL + 6.dp.toPx(), yHi - 12.dp.toPx()), axisStyle.copy(color = c.violetInk))
 
                     // target line + harmonics
                     if (targetNote != null) {

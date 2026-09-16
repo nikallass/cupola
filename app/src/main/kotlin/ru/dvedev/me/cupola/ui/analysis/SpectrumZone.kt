@@ -139,7 +139,11 @@ fun SpectrumZone(
             // cupola band
             val bx0 = xOf(band.loHz)
             val bx1 = xOf(band.hiHz)
-            drawRect(c.gold.copy(alpha = 0.10f), topLeft = Offset(bx0, gutterT), size = Size(bx1 - bx0, plotH))
+            // cupola band: a light violet tint with violet edges (owner 2026‑09‑16: gold on gold
+            // vanished under the fill while singing)
+            drawRect(c.violet.copy(alpha = 0.10f), topLeft = Offset(bx0, gutterT), size = Size(bx1 - bx0, plotH))
+            drawLine(c.violet.copy(alpha = 0.6f), Offset(bx0, gutterT), Offset(bx0, gutterT + plotH), strokeWidth = 1.5.dp.toPx())
+            drawLine(c.violet.copy(alpha = 0.6f), Offset(bx1, gutterT), Offset(bx1, gutterT + plotH), strokeWidth = 1.5.dp.toPx())
 
             val frame = snapshot.latest ?: return@Canvas
             val binHz = frame.binHz
@@ -182,13 +186,14 @@ fun SpectrumZone(
                     val dash = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 4.dp.toPx()))
                     val gap = 3.dp.toPx()
                     var lastLabelRight = -1000f
+                    // every line starts at the same level: just under the row of numbers
+                    val lineTop = gutterT + measurer.measure("1", axisStyle).size.height + 3.dp.toPx()
                     var k = 1
                     while (k * noteF0Hz < F_MAX && k <= 64) {
                         val hz = k * noteF0Hz
                         if (hz >= F_MIN) {
                             val x = xOf(hz)
-                            // the number sits at the top edge and the line starts just under it
-                            var lineTop = gutterT
+                            // the number sits at the top edge, the line starts just under that row
                             if (k <= 16) {
                                 val label = k.toString()
                                 val m = measurer.measure(label, axisStyle)
@@ -196,7 +201,6 @@ fun SpectrumZone(
                                 if (left - lastLabelRight >= gap) {
                                     drawLabel(measurer, label, Offset(left, gutterT + 1.dp.toPx()), axisStyle.copy(color = c.mut))
                                     lastLabelRight = left + m.size.width
-                                    lineTop = gutterT + m.size.height + 3.dp.toPx()
                                 }
                             }
                             drawLine(c.ink.copy(alpha = 0.35f), Offset(x, lineTop), Offset(x, gutterT + plotH), strokeWidth = 2f, pathEffect = dash)

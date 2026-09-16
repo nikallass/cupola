@@ -133,7 +133,7 @@ fun NoteZone(
                                 Text(name + arrow, style = t.stats, color = centsColor(display.cents), maxLines = 1, softWrap = false)
                             }
                         }
-                        collapsed -> Label("—")
+                        collapsed -> Box(Modifier.height(20.dp), contentAlignment = Alignment.CenterEnd) { Text("—", style = t.stats, color = c.dim, maxLines = 1) }
                         gateText != null -> Label(gateText, color = c.warn)
                         targetNote != null -> Label(stringResource(R.string.target_prefix) + " " + NoteNames.label(targetNote, notation, accidentals).joined)
                         else -> Label(stringResource(R.string.tap_to_pin))
