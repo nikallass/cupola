@@ -29,3 +29,6 @@ screenshots/
 # release keystore (CI writes it from secrets)
 cupola.jks
 *.jks
+
+# logs sent by the owner
+logs/
