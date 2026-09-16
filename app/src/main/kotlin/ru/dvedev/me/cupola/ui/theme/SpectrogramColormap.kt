@@ -33,19 +33,17 @@ class SpectrogramColormap(private val stops: List<Color>) {
     fun argb(level: Float): Int = lut[(level.coerceIn(0f, 1f) * (SIZE - 1)).roundToInt()]
 
     /**
-     * The same palette with the level remapped before lookup (owner 2026‑09‑16: devices differ,
-     * so brightness and contrast are settings): `level' = (level − 0.5)·contrast + 0.5 + brightness`.
-     * [brightnessPct] −50…50, [contrastPct] 50…300.
+     * The same palette with a power curve on the level (owner 2026‑09‑16): `level' = level^γ`,
+     * γ = [contrastPct] / 100. Below 100 % the weak half-tones come up, above it only the
+     * peaks stay; the background itself (level 0) never changes, so no uniform tint appears.
      */
-    fun adjusted(brightnessPct: Int, contrastPct: Int): SpectrogramColormap {
-        if (brightnessPct == 0 && contrastPct == 100) return this
+    fun adjusted(contrastPct: Int): SpectrogramColormap {
+        if (contrastPct == 100) return this
         val out = SpectrogramColormap(this)
-        val b = brightnessPct / 100f
-        val k = contrastPct / 100f
+        val gamma = contrastPct / 100.0
         for (i in 0 until SIZE) {
-            val x = i / (SIZE - 1).toFloat()
-            val y = ((x - 0.5f) * k + 0.5f + b).coerceIn(0f, 1f)
-            out.lut[i] = lut[(y * (SIZE - 1)).roundToInt()]
+            val y = (i / (SIZE - 1).toDouble()).pow(gamma)
+            out.lut[i] = lut[(y * (SIZE - 1)).roundToInt().coerceIn(0, SIZE - 1)]
         }
         return out
     }

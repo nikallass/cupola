@@ -26,8 +26,7 @@ data class Settings(
     val language: Language = Language.SYSTEM,
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val logFrequencyAxis: Boolean = true,
-    /** Spectrogram palette adjustment, % (owner 2026‑09‑16): tone and peak contrast per device. */
-    val spectrogramBrightness: Int = 0,
+    /** Spectrogram contrast, % (owner 2026‑09‑16): a power curve on the level — low shows half-tones, high keeps only peaks. */
     val spectrogramContrast: Int = 100,
     val fftSize: Int = 2048,
     val audioSource: AudioSourcePreference = AudioSourcePreference.AUTO,

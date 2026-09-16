@@ -103,7 +103,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
                     history = vm.spectrogram, band = band, targetNote = vm.targetNote, harmonics = harmonics,
                     paused = vm.paused, viewEnd = vm.viewEnd, onScroll = vm::scrollBy,
                     collapsed = spectrogramFolded, onToggle = { spectrogramFolded = !spectrogramFolded },
-                    brightnessPct = settings.spectrogramBrightness, contrastPct = settings.spectrogramContrast,
+                    contrastPct = settings.spectrogramContrast,
                     modifier = mod,
                 )
             }

@@ -64,14 +64,13 @@ fun SpectrogramZone(
     onScroll: (columns: Int) -> Unit = {},
     collapsed: Boolean = false,
     onToggle: (() -> Unit)? = null,
-    /** Display adjustment of the palette (settings): brightness −50…50 %, contrast 50…300 %. */
-    brightnessPct: Int = 0,
+    /** Display adjustment of the palette (settings): contrast 50…300 % as a power curve on the level. */
     contrastPct: Int = 100,
     modifier: Modifier = Modifier,
 ) {
     val c = CupolaTheme.colors
     val baseColormap = CupolaTheme.colormap
-    val colormap = remember(baseColormap, brightnessPct, contrastPct) { baseColormap.adjusted(brightnessPct, contrastPct) }
+    val colormap = remember(baseColormap, contrastPct) { baseColormap.adjusted(contrastPct) }
     val measurer = rememberTextMeasurer(cacheSize = 128) // ~25 distinct labels per frame; the default 8 thrashes
     val axisStyle = CupolaTheme.type.axis
     val renderer = remember(history, colormap) { SpectrogramRenderer(history, colormap) }
