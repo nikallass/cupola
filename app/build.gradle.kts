@@ -14,8 +14,8 @@ android {
         applicationId = "ru.dvedev.me.cupola"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 12
-        versionName = "0.2.10"
+        versionCode = 13
+        versionName = "0.2.11"
     }
 
     // Release signing: a keystore from the environment (CI secrets or a local shell), else the
