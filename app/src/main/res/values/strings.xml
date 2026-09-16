@@ -135,8 +135,6 @@
     <string name="settings_cents_ok">Порог «в ноте»</string>
     <string name="settings_cents_warn">Порог «мимо»</string>
     <string name="settings_cents_help">Отклонение в центах, до которого нота считается точной (зелёный) и терпимой (жёлтый). Дальше — красный.</string>
-    <string name="settings_tuning">Подстройка строя</string>
-    <string name="settings_tuning_help">Сдвиг всего строя в центах поверх A4: если ваш инструмент настроен на +10 ¢, поставьте +10 — нота будет определяться от сдвинутого ля, и «Дать тон» сыграет так же. Справа показана получившаяся частота ля.</string>
     <string name="settings_confidence">Уверенность высоты</string>
     <string name="settings_confidence_help">Минимальная уверенность детектора высоты, чтобы нота считалась. Ниже — больше ложных нот, выше — пропуски на тихом звуке.</string>
     <string name="settings_ring_share">Купол: доля для максимума</string>

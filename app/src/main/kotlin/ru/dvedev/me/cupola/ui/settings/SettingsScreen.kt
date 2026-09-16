@@ -174,8 +174,6 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onLanguageChanged: () ->
                     onDecrement = { update { it.copy(centsOk = (it.centsOk - 1).coerceAtLeast(3)) } }, onIncrement = { update { it.copy(centsOk = (it.centsOk + 1).coerceAtMost(it.centsWarn - 1)) } })
                 StepperRow(stringResource(R.string.settings_cents_warn), stringResource(R.string.settings_cents_help), "±${s.centsWarn} ¢",
                     onDecrement = { update { it.copy(centsWarn = (it.centsWarn - 1).coerceAtLeast(it.centsOk + 1)) } }, onIncrement = { update { it.copy(centsWarn = (it.centsWarn + 1).coerceAtMost(49)) } })
-                StepperRow(stringResource(R.string.settings_tuning), stringResource(R.string.settings_tuning_help), "%+d ¢ · %.1f ".format(s.tuningCents, s.effectiveA4Hz) + stringResource(R.string.unit_hz),
-                    onDecrement = { update { it.copy(tuningCents = (it.tuningCents - 1).coerceAtLeast(-50)) } }, onIncrement = { update { it.copy(tuningCents = (it.tuningCents + 1).coerceAtMost(50)) } })
                 StepperRow(stringResource(R.string.settings_confidence), stringResource(R.string.settings_confidence_help), "%.2f".format(s.confidenceMin),
                     onDecrement = { update { it.copy(confidenceMin = (it.confidenceMin - 0.05).coerceAtLeast(0.3)) } }, onIncrement = { update { it.copy(confidenceMin = (it.confidenceMin + 0.05).coerceAtMost(0.95)) } })
                 StepperRow(stringResource(R.string.settings_ring_share), stringResource(R.string.settings_ring_share_help), "${s.ringShareFullPct} %",

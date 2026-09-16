@@ -46,7 +46,7 @@ class AppGraph(private val app: Application) {
                 engine.updateConfig {
                     it.copy(
                         band = s.band,
-                        a4Hz = s.effectiveA4Hz,
+                        a4Hz = s.a4Hz.toDouble(),
                         confidenceMin = s.confidenceMin,
                         fftSize = s.fftSize, // hop stays 480 (10 ms) for both 2048 and 4096 (SPEC §4)
                         scoreParams = s.scoreParams(),

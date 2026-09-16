@@ -71,6 +71,8 @@ fun SpectrogramZone(
     onToggle: (() -> Unit)? = null,
     /** Display adjustment of the palette (settings): contrast 50…300 % as a power curve on the level. */
     contrastPct: Int = 100,
+    /** Tuning reference for the pinned note's lines (settings «Строй A4»). */
+    a4Hz: Double = ru.dvedev.me.cupola.notation.Tuning.DEFAULT_A4_HZ,
     modifier: Modifier = Modifier,
 ) {
     val c = CupolaTheme.colors
@@ -169,7 +171,7 @@ fun SpectrogramZone(
 
                     // target line + harmonics
                     if (targetNote != null) {
-                        val f = targetNote.hz()
+                        val f = targetNote.hz(a4Hz)
                         var k = 1
                         while (k * f < history.fMax && k <= 16) { // the fundamental and overtones 1…15
                             val y = history.yFraction(k * f) * plotH

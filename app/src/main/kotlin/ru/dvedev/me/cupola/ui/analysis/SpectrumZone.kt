@@ -175,28 +175,27 @@ fun SpectrumZone(
                 if (noteF0Hz > 0) {
                     val dash = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 4.dp.toPx()))
                     val gap = 3.dp.toPx()
-                    var lastLabelRight = -1000f
                     // every line starts at the same level: just under the row of numbers
                     val lineTop = gutterT + measurer.measure("1", axisStyle).size.height + 3.dp.toPx()
                     var k = 1
                     while (k * noteF0Hz < F_MAX && k <= 64) {
                         val hz = k * noteF0Hz
-                        if (hz >= F_MIN) {
-                            val x = xOf(hz)
-                            // the number sits at the top edge, the line starts just under that row
-                            if (k <= 16) {
-                                // numbered from 0 (the fundamental) to 15 (owner 2026‑09‑16)
-                                val label = (k - 1).toString()
-                                val m = measurer.measure(label, axisStyle)
-                                val left = x - m.size.width / 2
-                                if (left - lastLabelRight >= gap) {
-                                    drawLabel(measurer, label, Offset(left, gutterT + 1.dp.toPx()), axisStyle.copy(color = c.mut))
-                                    lastLabelRight = left + m.size.width
-                                }
-                            }
-                            drawLine(c.ink.copy(alpha = 0.35f), Offset(x, lineTop), Offset(x, gutterT + plotH), strokeWidth = 2f, pathEffect = dash)
-                        }
+                        if (hz >= F_MIN) drawLine(c.ink.copy(alpha = 0.35f), Offset(xOf(hz), lineTop), Offset(xOf(hz), gutterT + plotH), strokeWidth = 2f, pathEffect = dash)
                         k++
+                    }
+                    // numbers 0 (the fundamental) … 15 at the top edge, placed from the highest down so a
+                    // collision drops a middle number, never the last one (owner 2026‑09‑16)
+                    var lastLabelLeft = Float.POSITIVE_INFINITY
+                    for (kk in 16 downTo 1) {
+                        val hz = kk * noteF0Hz
+                        if (hz >= F_MAX || hz < F_MIN) continue
+                        val label = (kk - 1).toString()
+                        val m = measurer.measure(label, axisStyle)
+                        val left = xOf(hz) - m.size.width / 2
+                        if (lastLabelLeft - (left + m.size.width) >= gap) {
+                            drawLabel(measurer, label, Offset(left, gutterT + 1.dp.toPx()), axisStyle.copy(color = c.mut))
+                            lastLabelLeft = left
+                        }
                     }
                 }
                 drawPath(fill, c.gold.copy(alpha = 0.22f))

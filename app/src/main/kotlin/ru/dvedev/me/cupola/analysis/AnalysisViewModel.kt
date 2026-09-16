@@ -118,7 +118,7 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
     /** «Дать тон»: plays the pinned note at the configured A4. */
     fun playTargetTone() {
         val note = targetNote ?: return
-        referenceTone.play(ru.dvedev.me.cupola.notation.midiToHz(note.midi, settings.value.effectiveA4Hz))
+        referenceTone.play(ru.dvedev.me.cupola.notation.midiToHz(note.midi, settings.value.a4Hz.toDouble()))
     }
 
     fun startSession() = graph.startSession()

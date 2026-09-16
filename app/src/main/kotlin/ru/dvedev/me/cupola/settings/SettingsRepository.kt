@@ -51,7 +51,7 @@ class SettingsRepository(context: Context) {
             s.copy(
                 centsOk = d.centsOk, centsWarn = d.centsWarn, confidenceMin = d.confidenceMin,
                 ringShareFullPct = d.ringShareFullPct, ringHumpFullDb = d.ringHumpFullDb,
-                tuningCents = d.tuningCents, straightMaxCents = d.straightMaxCents, vibratoMinHz = d.vibratoMinHz, vibratoMaxHz = d.vibratoMaxHz, vibratoMaxCents = d.vibratoMaxCents, noiseWindowMinutes = d.noiseWindowMinutes, displayAveragingMs = d.displayAveragingMs,
+                straightMaxCents = d.straightMaxCents, vibratoMinHz = d.vibratoMinHz, vibratoMaxHz = d.vibratoMaxHz, vibratoMaxCents = d.vibratoMaxCents, noiseWindowMinutes = d.noiseWindowMinutes, displayAveragingMs = d.displayAveragingMs,
                 ringWeight = d.ringWeight, pitchWeight = d.pitchWeight, steadyWeight = d.steadyWeight,
             )
         }
@@ -67,7 +67,6 @@ class SettingsRepository(context: Context) {
             customHiHz = this[intPreferencesKey(K_CUSTOM_HI)] ?: d.customHiHz,
             useCustomBand = this[booleanPreferencesKey(K_USE_CUSTOM)] ?: d.useCustomBand,
             a4Hz = this[intPreferencesKey(K_A4)] ?: d.a4Hz,
-            tuningCents = this[intPreferencesKey(K_TUNING)] ?: d.tuningCents,
             notation = enum(K_NOTATION, d.notation, NotationMode.entries.toTypedArray()),
             accidentals = enum(K_ACCIDENTALS, d.accidentals, Accidentals.entries.toTypedArray()),
             language = enum(K_LANGUAGE, d.language, Language.entries.toTypedArray()),
@@ -104,7 +103,6 @@ class SettingsRepository(context: Context) {
         this[intPreferencesKey(K_CUSTOM_HI)] = s.customHiHz
         this[booleanPreferencesKey(K_USE_CUSTOM)] = s.useCustomBand
         this[intPreferencesKey(K_A4)] = s.a4Hz
-        this[intPreferencesKey(K_TUNING)] = s.tuningCents
         this[stringPreferencesKey(K_NOTATION)] = s.notation.name
         this[stringPreferencesKey(K_ACCIDENTALS)] = s.accidentals.name
         this[stringPreferencesKey(K_LANGUAGE)] = s.language.name
@@ -143,7 +141,6 @@ class SettingsRepository(context: Context) {
         private const val K_CUSTOM_HI = "customHiHz"
         private const val K_USE_CUSTOM = "useCustomBand"
         private const val K_A4 = "a4Hz"
-        private const val K_TUNING = "tuningCents"
         private const val K_NOTATION = "notation"
         private const val K_ACCIDENTALS = "accidentals"
         private const val K_LANGUAGE = "language"

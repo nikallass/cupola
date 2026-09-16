@@ -137,7 +137,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit) {
                     paused = vm.paused, viewEnd = vm.viewEnd, onScroll = vm::scrollBy,
                     visibleColumns = vm.spectrogramSpan, onZoom = vm::zoomSpectrogram,
                     collapsed = spectrogramFolded, onToggle = { spectrogramFolded = !spectrogramFolded },
-                    contrastPct = settings.spectrogramContrast,
+                    contrastPct = settings.spectrogramContrast, a4Hz = settings.a4Hz.toDouble(),
                     modifier = mod,
                 )
             }
