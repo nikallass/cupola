@@ -79,6 +79,15 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun toggleTarget(current: Note?) {
         targetNote = if (targetNote == null) current else null
+        if (targetNote == null) referenceTone.stop()
+    }
+
+    private val referenceTone = ru.dvedev.me.cupola.audio.ReferenceTone()
+
+    /** «Дать тон»: plays the pinned note at the configured A4. */
+    fun playTargetTone() {
+        val note = targetNote ?: return
+        referenceTone.play(ru.dvedev.me.cupola.notation.midiToHz(note.midi, settings.value.effectiveA4Hz))
     }
 
     fun startSession() = graph.startSession()
@@ -108,6 +117,7 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
     val processingLatencyMs: Double get() = engine.processingLatencyMs
 
     override fun onCleared() {
+        referenceTone.stop()
         engine.removeListener(spectrogram)
         engine.removeListener(spectrum)
         engine.removeListener(noteSmoother)

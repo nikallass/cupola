@@ -21,6 +21,8 @@ data class Settings(
     val customHiHz: Int = 3200,
     val useCustomBand: Boolean = false,
     val a4Hz: Int = Tuning.DEFAULT_A4_HZ.toInt(),
+    /** Global fine tuning, cents (owner 2026‑09‑16: the piano at home sits +10 ¢): shifts the note reference and the reference tone. */
+    val tuningCents: Int = 0,
     val notation: NotationMode = NotationMode.BOTH,
     val accidentals: Accidentals = Accidentals.SHARPS,
     val language: Language = Language.SYSTEM,
@@ -52,6 +54,10 @@ data class Settings(
     val steadyWeight: Double = ScoreWeights.STEADY,
     val onboardingDone: Boolean = false,
 ) {
+    /** A4 with the fine tuning applied — what the analyzer and the reference tone use. */
+    val effectiveA4Hz: Double
+        get() = a4Hz * Math.pow(2.0, tuningCents / 1200.0)
+
     val band: RingBand
         get() = if (useCustomBand) RingBand(customLoHz.toDouble(), customHiHz.toDouble()) else voiceType.band
 

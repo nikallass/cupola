@@ -55,6 +55,8 @@ import ru.dvedev.me.cupola.notation.Note
 import ru.dvedev.me.cupola.notation.NoteNames
 import ru.dvedev.me.cupola.ui.components.Badge
 import ru.dvedev.me.cupola.ui.components.Label
+import ru.dvedev.me.cupola.ui.components.PillStyle
+import ru.dvedev.me.cupola.ui.components.PillButton
 import ru.dvedev.me.cupola.ui.components.ZoneHeader
 import ru.dvedev.me.cupola.ui.theme.CupolaDimens
 import ru.dvedev.me.cupola.ui.theme.CupolaTheme
@@ -78,6 +80,8 @@ fun NoteZone(
     pointsAnimation: Boolean,
     onTapNote: (Note?) -> Unit,
     onLongPressArc: () -> Unit,
+    /** «Дать тон» for the pinned note (owner 2026‑09‑16); shown only while a target is pinned. */
+    onGiveTone: () -> Unit = {},
     modifier: Modifier = Modifier,
     compact: Boolean = false,
     collapsed: Boolean = false,
@@ -195,6 +199,11 @@ fun NoteZone(
                 }
             }
             HintRow(if (hintsEnabled) session.hint else null, Modifier.padding(horizontal = CupolaDimens.paddingH).padding(bottom = 6.dp))
+            if (targetNote != null) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = CupolaDimens.paddingH).padding(bottom = 10.dp), horizontalArrangement = Arrangement.End) {
+                    PillButton(stringResource(R.string.action_give_tone), onClick = onGiveTone, style = PillStyle.Outline, compact = true)
+                }
+            }
         }
     }
 }

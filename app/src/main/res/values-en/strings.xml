@@ -48,6 +48,7 @@
 
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_give_tone">Play the tone</string>
     <string name="action_back">Back</string>
     <string name="unit_s">s</string>
     <string name="voice_custom">custom band</string>
@@ -143,6 +144,8 @@
     <string name="settings_cents_ok">"In tune" threshold</string>
     <string name="settings_cents_warn">"Off" threshold</string>
     <string name="settings_cents_help">Deviation in cents up to which the note counts as in tune (green) and tolerable (yellow). Beyond that — red.</string>
+    <string name="settings_tuning">Fine tuning</string>
+    <string name="settings_tuning_help">Shifts the whole tuning in cents on top of A4: if your instrument sits at +10 ¢, set +10 — notes are detected against the shifted A and "Play the tone" plays the same. The resulting A frequency is shown on the right.</string>
     <string name="settings_confidence">Pitch confidence</string>
     <string name="settings_confidence_help">Minimum pitch-detector confidence for a note to count. Lower — more false notes; higher — gaps on quiet sound.</string>
     <string name="settings_ring_share">Cupola: share for maximum</string>

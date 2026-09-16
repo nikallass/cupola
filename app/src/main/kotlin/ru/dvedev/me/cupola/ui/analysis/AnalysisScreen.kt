@@ -93,7 +93,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
                 NoteZone(
                     metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote,
                     notation = notation, accidentals = accidentals, hintsEnabled = settings.hints, pointsAnimation = settings.pointsAnimation,
-                    onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onRoomNoise,
+                    onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onRoomNoise, onGiveTone = { vm.playTargetTone() },
                     modifier = mod, compact = compact,
                     collapsed = noteFolded, onToggle = { noteFolded = !noteFolded },
                 )

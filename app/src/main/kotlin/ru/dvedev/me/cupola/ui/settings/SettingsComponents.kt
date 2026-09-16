@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Switch
@@ -142,7 +143,7 @@ fun StepperRow(title: String, help: String?, valueText: String, onDecrement: () 
     SettingRow(title, help) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StepButton("−", onDecrement)
-            Text(valueText, style = CupolaTheme.type.stats, color = c.ink, modifier = Modifier.width(76.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(valueText, style = CupolaTheme.type.stats, color = c.ink, modifier = Modifier.widthIn(min = 76.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1)
             StepButton("+", onIncrement)
         }
     }
