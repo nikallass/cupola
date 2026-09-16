@@ -80,6 +80,8 @@ fun NoteZone(
     onLongPressArc: () -> Unit,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
+    collapsed: Boolean = false,
+    onToggle: (() -> Unit)? = null,
 ) {
     val c = CupolaTheme.colors
     val t = CupolaTheme.type
@@ -92,7 +94,7 @@ fun NoteZone(
     // the arc shows the cupola indicator (owner decision 2026‑09‑15): share of the voice
     // energy in the band × the hump it makes over its flanks, loudness-independent
     val arcValue = if (!display.ringSharePct.isNaN()) "%.0f %%".format(display.ringSharePct) else "—"
-    val arcSub = if (!display.humpDb.isNaN()) stringResource(R.string.hump_fmt, formatDb(display.humpDb)) else ""
+    val arcSub = if (!display.humpDb.isNaN()) formatDb(display.humpDb) + " dB" else ""
 
     val arcFill = if (m != null && m.voice) display.ring.coerceIn(0.0, 1.0) else 0.0
     val arcCounted = display.counted
@@ -102,6 +104,8 @@ fun NoteZone(
         Box(Modifier.matchParentSize().background(c.ok.copy(alpha = glow)))
         Column(Modifier.fillMaxWidth()) {
             ZoneHeader(
+                collapsed = if (onToggle != null) collapsed else null,
+                onToggle = onToggle,
                 left = {
                     Label(stringResource(R.string.zone_note))
                     Spacer(Modifier.width(8.dp))
@@ -121,10 +125,12 @@ fun NoteZone(
                     }
                 },
             )
+            if (collapsed) return@Column
             val noteBlock: @Composable (Modifier) -> Unit = { mod ->
                 Column(mod.pointerInput(display.note) { detectTapGestures(onTap = { onTapNote(if (voiced) display.note else null) }) }) {
                     // two fixed rows: the note alone, then scientific name + cents — nothing ever wraps or shifts
-                    val noteStyle = if (compact) t.note.copy(fontSize = 66.sp) else t.note
+                    // owner 2026‑09‑16: the 84 sp name clipped at the top on phones — smaller, in the same rows
+                    val noteStyle = if (compact) t.note.copy(fontSize = 58.sp) else t.note.copy(fontSize = 70.sp)
                     val headline = when {
                         !voiced -> "—"
                         notation == NotationMode.EN -> NoteNames.en(display.note, accidentals)
@@ -136,7 +142,7 @@ fun NoteZone(
                         color = if (display.holding) c.mut else c.ink,
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
-                        modifier = Modifier.height(if (compact) 70.dp else 88.dp),
+                        modifier = Modifier.height(if (compact) 68.dp else 84.dp),
                     )
                     Row(Modifier.height(44.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (voiced && notation == NotationMode.BOTH) {
@@ -241,7 +247,8 @@ private fun CupolaArc(ring: Double, counted: Boolean, valueText: String, subText
     val sparks = remember { List(SPARKS) { i -> Spark(seed = i * 0.618f % 1f, speed = 0.7f + (i % 5) * 0.15f, angle = (i * 137f) % 360f) } }
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Label(stringResource(R.string.cupola))
-        Canvas(Modifier.fillMaxWidth().height(70.dp)) {
+        Box(Modifier.fillMaxWidth().height(78.dp), contentAlignment = Alignment.BottomCenter) {
+        Canvas(Modifier.fillMaxWidth().height(78.dp)) {
             val stroke = 10.dp.toPx()
             val d = min(size.width, size.height * 2) - stroke
             val topLeft = Offset((size.width - d) / 2, stroke / 2)
@@ -271,8 +278,10 @@ private fun CupolaArc(ring: Double, counted: Boolean, valueText: String, subText
                 }
             }
         }
-        Text(valueText, style = t.ringValue, color = if (met && counted) c.ok else c.goldInk, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
-        Text(subText, style = t.sub, color = c.dim, maxLines = 1, modifier = Modifier.height(18.dp))
+        // the share sits inside the arch (owner 2026‑09‑16), the hump in dB under it
+        Text(valueText, style = t.ringValue, color = if (met && counted) c.ok else c.goldInk, maxLines = 1)
+        }
+        Text(subText, style = t.stats, color = c.goldInk, maxLines = 1, modifier = Modifier.height(22.dp).padding(top = 2.dp))
     }
 }
 

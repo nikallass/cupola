@@ -59,6 +59,8 @@ fun SpectrumZone(
     logScale: Boolean = true,
     /** The «grey line = room noise» legend; off on narrow screens where it collides with the readout. */
     showLegend: Boolean = true,
+    collapsed: Boolean = false,
+    onToggle: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val c = CupolaTheme.colors
@@ -78,6 +80,8 @@ fun SpectrumZone(
 
     Column(modifier.background(c.panel)) {
         ZoneHeader(
+            collapsed = if (onToggle != null) collapsed else null,
+            onToggle = onToggle,
             left = {
                 Label(stringResource(R.string.zone_spectrum))
                 Spacer(Modifier.width(8.dp))
@@ -94,6 +98,7 @@ fun SpectrumZone(
                 )
             },
         )
+        if (collapsed) return@Column
         // Offscreen layer: HWUI keeps the rendered spectrum as a texture and re-executes the
         // heavy path drawing only when the canvas is invalidated (20 Hz), not on every vsync
         Canvas(Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {

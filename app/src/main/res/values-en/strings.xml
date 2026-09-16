@@ -27,8 +27,8 @@
     <string name="tap_to_pin">tap to pin the note</string>
     <string name="target_prefix">target</string>
     <string name="cupola">cupola</string>
-    <string name="hump_fmt">hump %1$s dB</string>
-    <string name="cupola_readout">cupola %1$s %% · hump %2$s dB</string>
+    <string name="hump_fmt">%1$s dB</string>
+    <string name="cupola_readout">cupola %1$s %% · %2$s dB</string>
     <string name="spectrogram_axis_hint_lin">lin 80 Hz – 8 kHz</string>
     <string name="spectrogram_axis_hint">log 80 Hz – 8 kHz</string>
     <string name="sub_silence">silence</string>

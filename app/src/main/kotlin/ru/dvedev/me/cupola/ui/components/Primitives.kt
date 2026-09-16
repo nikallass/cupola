@@ -42,6 +42,9 @@ fun ZoneDivider(modifier: Modifier = Modifier) {
 @Composable
 fun ZoneHeader(
     modifier: Modifier = Modifier,
+    /** When given, a tap on the header toggles the zone (owner 2026‑09‑16) and a chevron shows its state. */
+    collapsed: Boolean? = null,
+    onToggle: (() -> Unit)? = null,
     left: @Composable () -> Unit,
     right: @Composable () -> Unit = {},
 ) {
@@ -50,9 +53,14 @@ fun ZoneHeader(
             Modifier
                 .fillMaxWidth()
                 .background(CupolaTheme.colors.zoneHeader)
+                .then(if (onToggle != null) Modifier.clickable(onClick = onToggle) else Modifier)
                 .padding(horizontal = CupolaDimens.paddingH, vertical = CupolaDimens.zoneHeaderPaddingV),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (collapsed != null) {
+                Text(if (collapsed) "▸" else "▾", style = CupolaTheme.type.label, color = CupolaTheme.colors.dim)
+                Spacer(Modifier.width(6.dp))
+            }
             Row(verticalAlignment = Alignment.CenterVertically) { left() }
             Spacer(Modifier.weight(1f))
             Row(verticalAlignment = Alignment.CenterVertically) { right() }

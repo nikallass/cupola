@@ -32,7 +32,7 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
     val uiMetrics: StateFlow<FrameMetrics?> = engine.metrics.sample(40).stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val spectrogram = SpectrogramHistory(hopSeconds = engine.analyzer.hopSeconds)
-    val spectrum = SpectrumSnapshot { engine.analyzer.noise }
+    val spectrum = SpectrumSnapshot(hopSeconds = engine.analyzer.hopSeconds) { engine.analyzer.noise }
     val noteSmoother = NoteDisplaySmoother(engine.analyzer.hopSeconds)
     val displayNote: StateFlow<DisplayNote> = noteSmoother.state
 

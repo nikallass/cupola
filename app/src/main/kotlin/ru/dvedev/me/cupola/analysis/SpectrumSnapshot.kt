@@ -8,10 +8,19 @@ import ru.dvedev.me.cupola.dsp.metrics.NoiseFloor
 
 /**
  * Latest spectrum for the spectrum zone (T-054): dB per bin, harmonics, noise profile.
- * Double-buffered so the UI thread never reads a half-written frame.
+ * Double-buffered so the UI thread never reads a half-written frame. Each bin is smoothed
+ * in time (owner feedback 2026‑09‑16: «не как осциллоскоп»): rises with [riseSeconds],
+ * falls with [fallSeconds], so the eye follows the trend instead of the frame-to-frame jitter.
  */
-class SpectrumSnapshot(private val smoothing: Float = 0.5f, private val noise: () -> NoiseFloor?) : FrameListener {
+class SpectrumSnapshot(
+    private val hopSeconds: Double = 0.01,
+    private val riseSeconds: Double = 0.15,
+    private val fallSeconds: Double = 0.4,
+    private val noise: () -> NoiseFloor?,
+) : FrameListener {
     private var ema: FloatArray = FloatArray(0)
+    private val riseAlpha = (1.0 - kotlin.math.exp(-hopSeconds / riseSeconds)).toFloat()
+    private val fallAlpha = (1.0 - kotlin.math.exp(-hopSeconds / fallSeconds)).toFloat()
 
     class Frame(bins: Int) {
         val db = FloatArray(bins)
@@ -58,9 +67,9 @@ class SpectrumSnapshot(private val smoothing: Float = 0.5f, private val noise: (
         val f = b[next]
         val db = spectrum.db
         if (ema.size != db.size) ema = FloatArray(db.size) { db[it].toFloat() }
-        val a = 1f - smoothing
         for (k in db.indices) {
-            ema[k] += (db[k].toFloat() - ema[k]) * a
+            val v = db[k].toFloat()
+            ema[k] += (v - ema[k]) * (if (v > ema[k]) riseAlpha else fallAlpha)
             f.db[k] = ema[k]
         }
         val n = noise()

@@ -62,6 +62,8 @@ fun SpectrogramZone(
     paused: Boolean,
     viewEnd: Long?, // when paused: last column to show, else null = live
     onScroll: (columns: Int) -> Unit = {},
+    collapsed: Boolean = false,
+    onToggle: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val c = CupolaTheme.colors
@@ -83,6 +85,8 @@ fun SpectrogramZone(
 
     Column(modifier.background(c.panel)) {
         ZoneHeader(
+            collapsed = if (onToggle != null) collapsed else null,
+            onToggle = onToggle,
             left = {
                 Label(stringResource(R.string.zone_spectrogram))
                 Spacer(Modifier.width(8.dp))
@@ -90,6 +94,7 @@ fun SpectrogramZone(
             },
             right = { Label(stringResource(if (history.logScale) R.string.spectrogram_axis_hint else R.string.spectrogram_axis_hint_lin)) },
         )
+        if (collapsed) return@Column
         var plotWidthPx by remember { mutableFloatStateOf(1f) }
         Box(Modifier.fillMaxSize()) {
             Canvas(

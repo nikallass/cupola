@@ -34,7 +34,7 @@ class RoomNoiseViewModel(private val graph: AppGraph) : ViewModel() {
     private val engine = graph.engine
     private val _state = MutableStateFlow(RoomNoiseUiState())
     val state: StateFlow<RoomNoiseUiState> = _state
-    val spectrum = SpectrumSnapshot { engine.analyzer.noise }
+    val spectrum = SpectrumSnapshot(hopSeconds = engine.analyzer.hopSeconds) { engine.analyzer.noise }
 
     var running: RoomNoiseSession? by mutableStateOf(null)
         private set

@@ -8,6 +8,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -61,6 +66,10 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
     val notation = settings.notation
     val accidentals = settings.accidentals
     vm.spectrogram.logScale = settings.logFrequencyAxis
+    // zones fold by a tap on their header (owner 2026‑09‑16): graphs full-screen, or the note alone
+    var noteFolded by rememberSaveable { mutableStateOf(false) }
+    var spectrogramFolded by rememberSaveable { mutableStateOf(false) }
+    var spectrumFolded by rememberSaveable { mutableStateOf(false) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(c.panel).systemBarsPadding()) {
         val landscape = maxWidth > maxHeight && maxWidth >= 600.dp
@@ -80,53 +89,67 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
                 onSettings = onSettings,
                 compact = narrow,
             )
-            if (landscape) {
-                Row(Modifier.fillMaxSize()) {
-                    NoteZone(
-                        metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote,
-                        notation = notation, accidentals = accidentals, hintsEnabled = settings.hints, pointsAnimation = settings.pointsAnimation,
-                        onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onRoomNoise,
-                        modifier = Modifier.width(if (shortLandscape) CupolaDimens.shortLandscapeNoteWidth else CupolaDimens.landscapeNoteWidth).fillMaxHeight(),
-                        compact = !shortLandscape,
-                    )
-                    Box(Modifier.width(CupolaDimens.divider).fillMaxHeight().background(c.line))
-                    Column(Modifier.fillMaxSize()) {
-                        SpectrogramZone(
-                            history = vm.spectrogram, band = band, targetNote = vm.targetNote, harmonics = harmonics,
-                            paused = vm.paused, viewEnd = vm.viewEnd, onScroll = vm::scrollBy,
-                            modifier = Modifier.fillMaxWidth().weight(if (shortLandscape) 1f else 0.6f),
-                        )
-                        if (!shortLandscape || roomForSpectrum) {
-                            ZoneDivider()
-                            SpectrumZone(
-                                snapshot = vm.spectrum, band = band, sharePct = displayNote.ringSharePct, humpDb = displayNote.humpDb,
-                                paused = vm.paused, topDb = { vm.spectrogram.topDb }, logScale = settings.logFrequencyAxis,
-                                showLegend = !shortLandscape,
-                                modifier = if (shortLandscape) Modifier.fillMaxWidth().height(130.dp) else Modifier.fillMaxWidth().weight(0.4f),
-                            )
-                        }
-                    }
-                }
-            } else {
+            val noteZone: @Composable (Modifier, Boolean) -> Unit = { mod, compact ->
                 NoteZone(
                     metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote,
                     notation = notation, accidentals = accidentals, hintsEnabled = settings.hints, pointsAnimation = settings.pointsAnimation,
                     onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onRoomNoise,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = mod, compact = compact,
+                    collapsed = noteFolded, onToggle = { noteFolded = !noteFolded },
                 )
-                ZoneDivider()
+            }
+            val spectrogramZone: @Composable (Modifier) -> Unit = { mod ->
                 SpectrogramZone(
                     history = vm.spectrogram, band = band, targetNote = vm.targetNote, harmonics = harmonics,
                     paused = vm.paused, viewEnd = vm.viewEnd, onScroll = vm::scrollBy,
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    collapsed = spectrogramFolded, onToggle = { spectrogramFolded = !spectrogramFolded },
+                    modifier = mod,
                 )
-                ZoneDivider()
+            }
+            val spectrumZone: @Composable (Modifier, Boolean) -> Unit = { mod, legend ->
                 SpectrumZone(
                     snapshot = vm.spectrum, band = band, sharePct = displayNote.ringSharePct, humpDb = displayNote.humpDb,
                     paused = vm.paused, topDb = { vm.spectrogram.topDb }, logScale = settings.logFrequencyAxis,
-                    showLegend = !narrow,
-                    modifier = Modifier.fillMaxWidth().height(if (narrow) 220.dp else CupolaDimens.spectrumHeight),
+                    showLegend = legend, collapsed = spectrumFolded, onToggle = { spectrumFolded = !spectrumFolded },
+                    modifier = mod,
                 )
+            }
+            // graphs stacked: the open one(s) share the height; a folded zone is just its header
+            val graphs: @Composable ColumnScope.(spectrogramWeight: Float, spectrumFixed: Dp?, legend: Boolean) -> Unit = { sgWeight, spFixed, legend ->
+                spectrogramZone(if (spectrogramFolded) Modifier.fillMaxWidth() else Modifier.fillMaxWidth().weight(sgWeight))
+                ZoneDivider()
+                val spectrumModifier = when {
+                    spectrumFolded -> Modifier.fillMaxWidth()
+                    spectrogramFolded || spFixed == null -> Modifier.fillMaxWidth().weight(if (spFixed == null) 1f - sgWeight else 1f)
+                    else -> Modifier.fillMaxWidth().height(spFixed)
+                }
+                spectrumZone(spectrumModifier, legend)
+            }
+            if (landscape) {
+                if (noteFolded) {
+                    // the folded note is a strip over both graphs, which then take the whole width
+                    Column(Modifier.fillMaxSize()) {
+                        noteZone(Modifier.fillMaxWidth(), false)
+                        ZoneDivider()
+                        graphs(if (shortLandscape) 0.65f else 0.6f, null, !shortLandscape)
+                    }
+                } else {
+                    Row(Modifier.fillMaxSize()) {
+                        noteZone(Modifier.width(if (shortLandscape) CupolaDimens.shortLandscapeNoteWidth else CupolaDimens.landscapeNoteWidth).fillMaxHeight(), !shortLandscape)
+                        Box(Modifier.width(CupolaDimens.divider).fillMaxHeight().background(c.line))
+                        Column(Modifier.fillMaxSize()) {
+                            if (shortLandscape && !roomForSpectrum) {
+                                spectrogramZone(if (spectrogramFolded) Modifier.fillMaxWidth() else Modifier.fillMaxWidth().weight(1f))
+                            } else {
+                                graphs(0.6f, if (shortLandscape) 130.dp else null, !shortLandscape)
+                            }
+                        }
+                    }
+                }
+            } else {
+                noteZone(Modifier.fillMaxWidth(), false)
+                ZoneDivider()
+                graphs(1f, if (narrow) 220.dp else CupolaDimens.spectrumHeight, !narrow)
             }
         }
     }
