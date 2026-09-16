@@ -187,7 +187,8 @@ fun SpectrumZone(
                         val hz = k * noteF0Hz
                         if (hz >= F_MIN) {
                             val x = xOf(hz)
-                            drawLine(c.ink.copy(alpha = 0.35f), Offset(x, gutterT), Offset(x, gutterT + plotH), strokeWidth = 2f, pathEffect = dash)
+                            // the number sits at the top edge and the line starts just under it
+                            var lineTop = gutterT
                             if (k <= 16) {
                                 val label = k.toString()
                                 val m = measurer.measure(label, axisStyle)
@@ -195,8 +196,10 @@ fun SpectrumZone(
                                 if (left - lastLabelRight >= gap) {
                                     drawLabel(measurer, label, Offset(left, gutterT + 1.dp.toPx()), axisStyle.copy(color = c.mut))
                                     lastLabelRight = left + m.size.width
+                                    lineTop = gutterT + m.size.height + 3.dp.toPx()
                                 }
                             }
+                            drawLine(c.ink.copy(alpha = 0.35f), Offset(x, lineTop), Offset(x, gutterT + plotH), strokeWidth = 2f, pathEffect = dash)
                         }
                         k++
                     }

@@ -14,8 +14,8 @@ import ru.dvedev.me.cupola.dsp.metrics.NoiseFloor
  */
 class SpectrumSnapshot(
     private val hopSeconds: Double = 0.01,
-    private val riseSeconds: Double = 0.15,
-    private val fallSeconds: Double = 0.34,
+    private val riseSeconds: Double = 0.12,
+    private val fallSeconds: Double = 0.27,
     private val noise: () -> NoiseFloor?,
 ) : FrameListener {
     private var ema: FloatArray = FloatArray(0)
