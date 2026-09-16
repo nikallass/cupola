@@ -31,6 +31,8 @@ data class AnalyzerConfig(
     val confidenceMin: Double = 0.7,
     val includeFundamentalInOvertones: Boolean = false,
     val vibratoThresholds: ru.dvedev.me.cupola.dsp.metrics.VibratoThresholds = ru.dvedev.me.cupola.dsp.metrics.VibratoThresholds(),
+    /** Quiet time the adaptive noise profile covers, seconds. */
+    val noiseWindowSeconds: Double = ru.dvedev.me.cupola.dsp.metrics.NoiseFloor.DEFAULT_WINDOW_SECONDS,
     val scoreParams: ScoreParams = ScoreParams(),
 )
 
@@ -57,7 +59,7 @@ class Analyzer(config: AnalyzerConfig, pitchDetector: PitchDetector? = null) {
     /** Live spectrum of the frame being reported in the callback (dB per bin). */
     val spectrum = PowerSpectrum(fftSize, sampleRate)
     val pitchDetector: PitchDetector = pitchDetector ?: YinPitchDetector(fftSize)
-    val noise = NoiseFloor(spectrum.bins, hopSeconds)
+    val noise = NoiseFloor(spectrum.bins, hopSeconds, windowSeconds = config.noiseWindowSeconds)
     val combRefiner = HarmonicCombRefiner()
     val pitchTracker = PitchTracker(combRefiner)
     /** Debug hook: raw time-domain estimate and the tracked result of every voiced frame. */

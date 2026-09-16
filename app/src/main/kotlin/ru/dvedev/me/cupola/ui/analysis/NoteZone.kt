@@ -137,7 +137,7 @@ fun NoteZone(
                             }
                         }
                         collapsed -> Box(Modifier.height(20.dp), contentAlignment = Alignment.CenterEnd) { Text("—", style = t.stats, color = c.dim, maxLines = 1) }
-                        inputSilent -> Label(stringResource(R.string.mic_silent), color = c.bad)
+                        inputSilent -> Label(stringResource(R.string.mic_silent), color = c.warn)
                         targetNote != null -> Label(stringResource(R.string.target_prefix) + " " + NoteNames.label(targetNote, notation, accidentals).joined)
                     }
                     if (session.active) {
@@ -171,7 +171,8 @@ fun NoteZone(
                         modifier = Modifier.height(if (compact) 68.dp else 84.dp),
                     )
                     CentsRow(voiced = voiced, showName = voiced && notation == NotationMode.BOTH, name = NoteNames.en(display.note, accidentals), cents = display.cents)
-                    CentsScale(cents = if (voiced) display.cents else Double.NaN, Modifier.fillMaxWidth().height(24.dp).padding(top = 4.dp))
+                    val pinCents by animateFloatAsState(targetValue = if (voiced) display.cents.toFloat() else 0f, animationSpec = tween(40, easing = androidx.compose.animation.core.LinearEasing), label = "pin")
+                    CentsScale(cents = if (voiced) pinCents.toDouble() else Double.NaN, Modifier.fillMaxWidth().height(24.dp).padding(top = 4.dp))
                     Spacer(Modifier.height(6.dp))
                     Text(subLine(m, display, targetNote, notation, accidentals), style = t.sub, color = c.dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(20.dp))
                 }
@@ -345,7 +346,26 @@ private fun CupolaArc(ring: Double, counted: Boolean, valueText: String, subText
         // under the readout: the pinned note (or ♪ → picker) and «Дать тон», which needs a pinned note
         // the arc column is sized so «A♯4 · Дать тон» fits: anything drawn outside a node's bounds is not repainted reliably
         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            PillButton(if (targetNote != null) NoteNames.en(targetNote) else "♯", onClick = onPickNote, style = PillStyle.Outline, compact = true, active = targetNote != null)
+            if (targetNote != null) {
+                PillButton(NoteNames.en(targetNote), onClick = onPickNote, style = PillStyle.Outline, compact = true, active = true)
+            } else {
+                // a drawn sharp: the ♯ glyph comes from a fallback font and sat off-centre
+                val ink = c.mut
+                PillButton("", onClick = onPickNote, style = PillStyle.Outline, compact = true, leading = {
+                    // as tall as a line of button text, so both pills in the row have the same height
+                    val lineH = with(androidx.compose.ui.platform.LocalDensity.current) { CupolaTheme.type.button.lineHeight.let { if (it.isSp) it.toDp() else CupolaTheme.type.button.fontSize.toDp() * 1.3f } }
+                    Canvas(Modifier.width(14.dp).height(lineH)) {
+                        val w = size.width
+                        val g = 14.dp.toPx()
+                        val top = (size.height - g) / 2
+                        val sw = 1.6.dp.toPx()
+                        drawLine(ink, Offset(w * 0.38f, top + g * 0.05f), Offset(w * 0.30f, top + g * 0.95f), strokeWidth = sw)
+                        drawLine(ink, Offset(w * 0.70f, top + g * 0.05f), Offset(w * 0.62f, top + g * 0.95f), strokeWidth = sw)
+                        drawLine(ink, Offset(w * 0.08f, top + g * 0.40f), Offset(w * 0.92f, top + g * 0.30f), strokeWidth = sw * 1.3f)
+                        drawLine(ink, Offset(w * 0.08f, top + g * 0.72f), Offset(w * 0.92f, top + g * 0.62f), strokeWidth = sw * 1.3f)
+                    }
+                })
+            }
             // Muted (panel fill + darker line): the Outline border is invisible on the cream panel
             PillButton(stringResource(R.string.action_give_tone), onClick = onGiveTone, style = PillStyle.Muted, compact = true, enabled = targetNote != null)
         }

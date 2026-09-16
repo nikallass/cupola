@@ -51,7 +51,7 @@ class SettingsRepository(context: Context) {
             s.copy(
                 centsOk = d.centsOk, centsWarn = d.centsWarn, confidenceMin = d.confidenceMin,
                 ringShareFullPct = d.ringShareFullPct, ringHumpFullDb = d.ringHumpFullDb,
-                tuningCents = d.tuningCents, straightMaxCents = d.straightMaxCents, vibratoMinHz = d.vibratoMinHz, vibratoMaxHz = d.vibratoMaxHz, vibratoMaxCents = d.vibratoMaxCents,
+                tuningCents = d.tuningCents, straightMaxCents = d.straightMaxCents, vibratoMinHz = d.vibratoMinHz, vibratoMaxHz = d.vibratoMaxHz, vibratoMaxCents = d.vibratoMaxCents, noiseWindowMinutes = d.noiseWindowMinutes, displayAveragingMs = d.displayAveragingMs,
                 ringWeight = d.ringWeight, pitchWeight = d.pitchWeight, steadyWeight = d.steadyWeight,
             )
         }
@@ -89,6 +89,8 @@ class SettingsRepository(context: Context) {
             vibratoMinHz = this[doublePreferencesKey(K_VIB_MIN_HZ)] ?: d.vibratoMinHz,
             vibratoMaxHz = this[doublePreferencesKey(K_VIB_MAX_HZ)] ?: d.vibratoMaxHz,
             vibratoMaxCents = this[intPreferencesKey(K_VIB_MAX_CENTS)] ?: d.vibratoMaxCents,
+            noiseWindowMinutes = this[intPreferencesKey(K_NOISE_WINDOW)] ?: d.noiseWindowMinutes,
+            displayAveragingMs = this[intPreferencesKey(K_DISPLAY_AVG)] ?: d.displayAveragingMs,
             ringWeight = this[doublePreferencesKey(K_W_RING)] ?: d.ringWeight,
             pitchWeight = this[doublePreferencesKey(K_W_PITCH)] ?: d.pitchWeight,
             steadyWeight = this[doublePreferencesKey(K_W_STEADY)] ?: d.steadyWeight,
@@ -125,6 +127,8 @@ class SettingsRepository(context: Context) {
         this[doublePreferencesKey(K_VIB_MIN_HZ)] = s.vibratoMinHz
         this[doublePreferencesKey(K_VIB_MAX_HZ)] = s.vibratoMaxHz
         this[intPreferencesKey(K_VIB_MAX_CENTS)] = s.vibratoMaxCents
+        this[intPreferencesKey(K_NOISE_WINDOW)] = s.noiseWindowMinutes
+        this[intPreferencesKey(K_DISPLAY_AVG)] = s.displayAveragingMs
         this[doublePreferencesKey(K_W_RING)] = s.ringWeight
         this[doublePreferencesKey(K_W_PITCH)] = s.pitchWeight
         this[doublePreferencesKey(K_W_STEADY)] = s.steadyWeight
@@ -161,6 +165,8 @@ class SettingsRepository(context: Context) {
         private const val K_VIB_MIN_HZ = "vibratoMinHz"
         private const val K_VIB_MAX_HZ = "vibratoMaxHz"
         private const val K_VIB_MAX_CENTS = "vibratoMaxCents"
+        private const val K_NOISE_WINDOW = "noiseWindowMinutes"
+        private const val K_DISPLAY_AVG = "displayAveragingMs"
         private const val K_W_RING = "ringWeight"
         private const val K_W_PITCH = "pitchWeight"
         private const val K_W_STEADY = "steadyWeight"

@@ -51,6 +51,8 @@ class AppGraph(private val app: Application) {
                         fftSize = s.fftSize, // hop stays 480 (10 ms) for both 2048 and 4096 (SPEC §4)
                         scoreParams = s.scoreParams(),
                         vibratoThresholds = s.vibratoThresholds(),
+                        noiseWindowSeconds = s.noiseWindowMinutes * 60.0,
+                        // display averaging is read by the note smoother directly
                     )
                 }
                 if (restart && engine.isRunning) {

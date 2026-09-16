@@ -51,6 +51,8 @@
     <string name="pick_note_clear">Unpin</string>
     <string name="action_give_tone">Play the tone</string>
     <string name="action_back">Back</string>
+    <string name="unit_ms">ms</string>
+    <string name="unit_min">min</string>
     <string name="unit_s">s</string>
     <string name="voice_custom">custom band</string>
 
@@ -138,6 +140,10 @@
     <string name="settings_vibrato_max_hz">Vibrato: rate up to</string>
     <string name="settings_vibrato_max_cents">Vibrato: extent up to</string>
     <string name="settings_vibrato_help">Borders of the label under the note. Extent below the straight-tone value — straight tone. Rate above the upper border — tremolo. Rate below the lower border or extent above the vibrato extent — wobble. Everything else — vibrato. Wobble and tremolo lower "steadiness" by 40 %%.</string>
+    <string name="settings_display_avg">Readout smoothing</string>
+    <string name="settings_display_avg_help">Over how many recent milliseconds the cents pin, the cents value and the frequency are averaged. More — smoother but delayed; 0 — no smoothing.</string>
+    <string name="settings_noise_window">Noise window</string>
+    <string name="settings_noise_window_help">How many recent minutes of quiet between phrases the background noise is estimated over before it is subtracted from the spectrum. Shorter — adapts faster to a new room; longer — steadier against stray sounds.</string>
     <string name="settings_w_ring">Weight: cupola</string>
     <string name="settings_w_pitch">Weight: accuracy</string>
     <string name="settings_w_steady">Weight: steadiness</string>
@@ -145,7 +151,7 @@
     <string name="settings_log">App log</string>
     <string name="settings_log_help">Saves this run\'s log to a file: device, version, microphone opening, errors. The file is not sent anywhere — send it along when something does not work.</string>
     <string name="settings_log_save">Save log</string>
-    <string name="mic_silent">no signal from the microphone</string>
+    <string name="mic_silent">waiting for the microphone signal</string>
     <string name="settings_reset_advanced">Reset</string>
     <string name="settings_tokens">Palette</string>
 

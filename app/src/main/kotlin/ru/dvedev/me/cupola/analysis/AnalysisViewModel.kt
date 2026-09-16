@@ -34,7 +34,7 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
 
     val spectrogram = SpectrogramHistory(hopSeconds = engine.analyzer.hopSeconds)
     val spectrum = SpectrumSnapshot(hopSeconds = engine.analyzer.hopSeconds) { engine.analyzer.noise }
-    val noteSmoother = NoteDisplaySmoother(engine.analyzer.hopSeconds)
+    val noteSmoother = NoteDisplaySmoother(engine.analyzer.hopSeconds, averagingMs = { graph.settingsState.value.displayAveragingMs })
     val displayNote: StateFlow<DisplayNote> = noteSmoother.state
 
 

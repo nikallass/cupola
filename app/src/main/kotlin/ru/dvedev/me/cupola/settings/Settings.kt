@@ -51,6 +51,10 @@ data class Settings(
     val vibratoMinHz: Double = 4.0,
     val vibratoMaxHz: Double = 7.5,
     val vibratoMaxCents: Int = 120,
+    /** Quiet time the background-noise profile covers, minutes (owner 2026‑09‑16: default 3). */
+    val noiseWindowMinutes: Int = 3,
+    /** Averaging of the note readouts (cents pin, cents, Hz), milliseconds (default 100). */
+    val displayAveragingMs: Int = 100,
     val ringWeight: Double = ScoreWeights.RING,
     val pitchWeight: Double = ScoreWeights.PITCH,
     val steadyWeight: Double = ScoreWeights.STEADY,

@@ -190,6 +190,10 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onTokens: () -> Unit, on
                     onDecrement = { update { it.copy(vibratoMaxHz = (it.vibratoMaxHz - 0.1).coerceAtLeast(it.vibratoMinHz + 0.5)) } }, onIncrement = { update { it.copy(vibratoMaxHz = (it.vibratoMaxHz + 0.1).coerceAtMost(15.0)) } })
                 StepperRow(stringResource(R.string.settings_vibrato_max_cents), stringResource(R.string.settings_vibrato_help), "±${s.vibratoMaxCents} ¢",
                     onDecrement = { update { it.copy(vibratoMaxCents = (it.vibratoMaxCents - 5).coerceAtLeast(it.straightMaxCents + 5)) } }, onIncrement = { update { it.copy(vibratoMaxCents = (it.vibratoMaxCents + 5).coerceAtMost(300)) } })
+                StepperRow(stringResource(R.string.settings_display_avg), stringResource(R.string.settings_display_avg_help), "${s.displayAveragingMs} " + stringResource(R.string.unit_ms),
+                    onDecrement = { update { it.copy(displayAveragingMs = (it.displayAveragingMs - 25).coerceAtLeast(0)) } }, onIncrement = { update { it.copy(displayAveragingMs = (it.displayAveragingMs + 25).coerceAtMost(1000)) } })
+                StepperRow(stringResource(R.string.settings_noise_window), stringResource(R.string.settings_noise_window_help), "${s.noiseWindowMinutes} " + stringResource(R.string.unit_min),
+                    onDecrement = { update { it.copy(noiseWindowMinutes = (it.noiseWindowMinutes - 1).coerceAtLeast(1)) } }, onIncrement = { update { it.copy(noiseWindowMinutes = (it.noiseWindowMinutes + 1).coerceAtMost(10)) } })
                 StepperRow(stringResource(R.string.settings_w_ring), stringResource(R.string.settings_weights_help), "%.2f".format(s.ringWeight),
                     onDecrement = { update { it.copy(ringWeight = (it.ringWeight - 0.05).coerceAtLeast(0.0)) } }, onIncrement = { update { it.copy(ringWeight = (it.ringWeight + 0.05).coerceAtMost(1.0)) } })
                 StepperRow(stringResource(R.string.settings_w_pitch), stringResource(R.string.settings_weights_help), "%.2f".format(s.pitchWeight),

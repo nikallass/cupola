@@ -9,10 +9,10 @@ import kotlin.math.roundToInt
  * - **RMS floor** — minimum tracker with a slow rise ([riseDbPerSecond]), so a long sung
  *   phrase does not pull the floor up; `voice = rmsDb > rmsFloorDb + 10 dB`.
  * - **Per-bin profile** — 10th percentile of *unvoiced* frames (the quiet pauses between
- *   phrases) over roughly the last ten minutes. The first [fastSlots] samples are taken every
+ *   phrases) over the last [windowSeconds] of quiet (3 minutes by default). The first [fastSlots] samples are taken every
  *   [fastDecimation] quiet frames so the floor settles within seconds of opening the app;
  *   after that one quiet frame in [slowDecimation] is kept, so [historySlots] samples span
- *   about ten minutes of quiet, and the ring then rolls. During the first [initSeconds] every
+ *   [windowSeconds] of quiet, and the ring then rolls. During the first [initSeconds] every
  *   frame counts as quiet.
  */
 class NoiseFloor(
@@ -24,9 +24,17 @@ class NoiseFloor(
     private val historySlots: Int = 600,
     private val fastSlots: Int = 200,
     private val fastDecimation: Int = 2,
-    private val slowDecimation: Int = 100,
+    /** How much quiet time the profile covers, seconds (settings, default 3 min). */
+    windowSeconds: Double = DEFAULT_WINDOW_SECONDS,
     private val recomputeEveryFrames: Int = 50,
 ) {
+    /** How much quiet time the profile covers, seconds; takes effect for the samples that follow. */
+    @Volatile var windowSeconds: Double = windowSeconds
+
+    /** Quiet frames per stored sample once the fast fill is done, so [historySlots] samples span [windowSeconds]. */
+    private val slowDecimation: Int
+        get() = ((windowSeconds / hopSeconds - fastSlots * fastDecimation) / (historySlots - fastSlots)).roundToInt().coerceAtLeast(fastDecimation)
+
     private val initFrames = (initSeconds / hopSeconds).roundToInt().coerceAtLeast(1)
     // Float storage: 1025 bins × 600 samples ≈ 2.5 MB
     private val history = Array(bins) { FloatArray(historySlots) { Float.NaN } }
@@ -130,5 +138,6 @@ class NoiseFloor(
         const val INITIAL_DB = -100.0
         const val PERCENTILE = 0.10
         const val MIN_HISTORY = 10
+        const val DEFAULT_WINDOW_SECONDS = 180.0
     }
 }

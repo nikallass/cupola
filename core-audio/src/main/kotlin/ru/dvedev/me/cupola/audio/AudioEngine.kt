@@ -93,6 +93,7 @@ class AudioEngine(
         analyzer.confidenceMin = c.confidenceMin
         analyzer.includeFundamentalInOvertones = c.includeFundamentalInOvertones
         analyzer.vibratoThresholds = c.vibratoThresholds
+        analyzer.noise.windowSeconds = c.noiseWindowSeconds
     }
 
     val config: AnalyzerConfig get() = baseConfig
@@ -126,9 +127,11 @@ class AudioEngine(
             // of digital silence, or as soon as the client reports itself silenced, the stream is
             // closed and opened again — a new client gets a fresh policy decision.
             var silentChunks = 0
+            var aliveChunks = 0
             var lastReopenNanos = 0L
             var chunksSinceCheck = 0
             var reopens = 0
+            var policySilenced = false
             try {
                 capture.start()
                 while (running.get()) {
@@ -141,15 +144,21 @@ class AudioEngine(
                         var zero = true
                         for (i in 0 until n) if (chunk[i] != 0f) { zero = false; break }
                         silentChunks = if (zero) silentChunks + 1 else 0
+                        aliveChunks = if (zero) 0 else aliveChunks + 1
                         val silentSeconds = silentChunks * hop.toDouble() / status.sampleRate
-                        val policySilenced = ++chunksSinceCheck >= 50 && run { chunksSinceCheck = 0; capture.isClientSilenced() }
-                        val silent = silentSeconds >= SILENCE_FLAG_SECONDS || policySilenced
+                        // the policy is asked every 50 chunks and its answer is kept until the next ask
+                        // (reading it as "false" in between made the on-screen flag blink every 0.5 s)
+                        val checkedNow = ++chunksSinceCheck >= 50
+                        if (checkedNow) { chunksSinceCheck = 0; policySilenced = capture.isClientSilenced() }
+                        // flag on: long zeros or silenced by policy; flag off only after 0.2 s of real signal
+                        val silent = if (_inputSilent.value) policySilenced || aliveChunks * hop.toDouble() / status.sampleRate < 0.2
+                            else silentSeconds >= SILENCE_FLAG_SECONDS || policySilenced
                         if (silent != _inputSilent.value) {
                             _inputSilent.value = silent
                             Log.w(TAG, if (silent) "input silent: zeros for ${"%.1f".format(silentSeconds)} s, policySilenced=$policySilenced" else "input alive again")
                         }
                         val now = System.nanoTime()
-                        if ((silentSeconds >= SILENCE_REOPEN_SECONDS || policySilenced) && now - lastReopenNanos > REOPEN_INTERVAL_NS) {
+                        if ((silentSeconds >= SILENCE_REOPEN_SECONDS || (checkedNow && policySilenced)) && now - lastReopenNanos > REOPEN_INTERVAL_NS) {
                             lastReopenNanos = now
                             silentChunks = 0
                             // every other attempt takes the other source: on the OnePlus first launch the

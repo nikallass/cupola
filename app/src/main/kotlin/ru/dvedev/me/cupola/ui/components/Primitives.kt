@@ -134,9 +134,9 @@ fun PillButton(
     ) {
         if (leading != null) {
             leading()
-            Spacer(Modifier.width(6.dp))
+            if (text.isNotEmpty()) Spacer(Modifier.width(6.dp))
         }
-        Text(text, style = CupolaTheme.type.button, color = fg, maxLines = 1)
+        if (text.isNotEmpty()) Text(text, style = CupolaTheme.type.button, color = fg, maxLines = 1)
     }
 }
 

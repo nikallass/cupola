@@ -38,7 +38,8 @@ data class DisplayNote(
  * Smooths the note readout (owner feedback 2026‑09‑15: «нота дёргается»): over the last
  * [windowSeconds] the most frequent note wins, cents and f0 are averaged over the frames
  * of that note; when voicing drops the last value is held for [holdSeconds] before «—».
- * Publishes at [publishHz] so the text does not recompose faster than the eye reads.
+ * Publishes at [publishHz]; the published cents and Hz are averaged over the last
+ * [averagingMs] (settings) so the pin glides instead of twitching.
  */
 class NoteDisplaySmoother(
     private val hopSeconds: Double,
@@ -51,8 +52,16 @@ class NoteDisplaySmoother(
     private val switchSeconds: Double = 0.3,
     /** When no single note holds this share of the voiced frames the window is "chaotic": keep the shown note. */
     private val chaosShare: Double = 0.5,
-    publishHz: Int = 20,
+    publishHz: Int = 50,
+    /** Boxcar over the last N ms of published cents/Hz (owner 2026‑09‑16: the pin twitched); 0 = off. */
+    private val averagingMs: () -> Int = { 100 },
 ) : FrameListener {
+    private val avgTime = DoubleArray(64)
+    private val avgNote = IntArray(64)
+    private val avgCents = DoubleArray(64)
+    private val avgF0 = DoubleArray(64)
+    private var avgHead = 0
+    private var avgCount = 0
     private val size = (windowSeconds / hopSeconds).roundToInt().coerceAtLeast(4)
     private val midi = IntArray(size) { -1 }
     private val cents = DoubleArray(size)
@@ -154,8 +163,23 @@ class NoteDisplaySmoother(
             } else {
                 candidate = -1
             }
-            val centsOut = ((meanP - best) * 100.0).coerceIn(-75.0, 75.0)
-            _state.value = DisplayNote(voiced = true, note = Note(best), cents = centsOut, f0Hz = sumF / n, holding = false, ring = ring, ringSharePct = shareEma, humpDb = humpEma, overtones = overtones, counted = counted, gate = blocking)
+            val centsNow = ((meanP - best) * 100.0).coerceIn(-75.0, 75.0)
+            val f0Now = sumF / n
+            // average the published values of the same note over the last averagingMs
+            avgTime[avgHead] = metrics.timeSec; avgNote[avgHead] = best; avgCents[avgHead] = centsNow; avgF0[avgHead] = f0Now
+            avgHead = (avgHead + 1) % avgTime.size
+            if (avgCount < avgTime.size) avgCount++
+            val span = averagingMs() / 1000.0
+            var cSum = 0.0
+            var fSum = 0.0
+            var cnt = 0
+            for (i in 0 until avgCount) {
+                if (avgNote[i] != best || metrics.timeSec - avgTime[i] > span + 1e-6) continue
+                cSum += avgCents[i]; fSum += avgF0[i]; cnt++
+            }
+            val centsOut = if (cnt > 0) cSum / cnt else centsNow
+            val f0Out = if (cnt > 0) fSum / cnt else f0Now
+            _state.value = DisplayNote(voiced = true, note = Note(best), cents = centsOut, f0Hz = f0Out, holding = false, ring = ring, ringSharePct = shareEma, humpDb = humpEma, overtones = overtones, counted = counted, gate = blocking)
         } else if (previous.voiced && metrics.timeSec - lastVoicedAt < holdSeconds) {
             _state.value = previous.copy(holding = true, ring = ring, ringSharePct = shareEma, humpDb = humpEma, counted = counted, gate = blocking)
         } else {

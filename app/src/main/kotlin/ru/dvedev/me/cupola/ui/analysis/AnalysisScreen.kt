@@ -8,6 +8,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.draw.alpha
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Alignment
@@ -87,7 +91,30 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit) {
     var spectrogramFolded by rememberSaveable { mutableStateOf(false) }
     var spectrumFolded by rememberSaveable { mutableStateOf(false) }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(c.panel).safeDrawingPadding()) {
+    // floating controls fade to near-invisible 5 s after the last touch anywhere on the screen (owner 2026‑09‑16)
+    var lastTouch by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    var controlsFaded by remember { mutableStateOf(false) }
+    LaunchedEffect(lastTouch) {
+        controlsFaded = false
+        kotlinx.coroutines.delay(5000)
+        controlsFaded = true
+    }
+    val controlsAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (controlsFaded) 0.08f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(if (controlsFaded) 700 else 150),
+        label = "controls",
+    )
+
+    BoxWithConstraints(
+        Modifier.fillMaxSize().background(c.panel).safeDrawingPadding().pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    val e = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                    if (e.changes.any { it.pressed && !it.previousPressed }) lastTouch = System.nanoTime()
+                }
+            }
+        },
+    ) {
         val landscape = maxWidth > maxHeight && maxWidth >= 600.dp
         // a phone held sideways: the note and the arc side by side in a narrower column, the
         // spectrogram takes the rest, the spectrum only if there is room
@@ -162,7 +189,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit) {
         }
         // floating round controls (owner 2026‑09‑16: no top bar): ★ start/stop the game (training
         // mode only), pause, settings — half-transparent over the bottom-right corner of the graphs
-        Row(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.align(Alignment.BottomStart).padding(start = 16.dp, bottom = 16.dp).alpha(controlsAlpha), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (settings.trainingMode) {
                 FloatingRoundButton(active = session.active, onClick = { if (session.active) vm.stopSession() else startSession() }) { ink ->
                     if (session.active) {

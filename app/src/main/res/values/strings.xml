@@ -57,6 +57,8 @@
     <string name="pick_note_clear">Снять</string>
     <string name="action_give_tone">Дать тон</string>
     <string name="action_back">Назад</string>
+    <string name="unit_ms">мс</string>
+    <string name="unit_min">мин</string>
     <string name="unit_s">с</string>
     <string name="voice_custom">свой диапазон</string>
 
@@ -146,6 +148,10 @@
     <string name="settings_vibrato_max_hz">Вибрато: частота до</string>
     <string name="settings_vibrato_max_cents">Вибрато: размах до</string>
     <string name="settings_vibrato_help">Границы подписи под нотой. Размах меньше «прямого тона» — прямой тон. Частота выше верхней — тремоло. Частота ниже нижней или размах больше «вибрато: размах до» — качание. Остальное — вибрато. Качание и тремоло снижают «ровность» на 40 %%.</string>
+    <string name="settings_display_avg">Сглаживание показаний</string>
+    <string name="settings_display_avg_help">За сколько последних миллисекунд усредняются бегунок центов, число центов и частота. Больше — плавнее, но с задержкой; 0 — без сглаживания.</string>
+    <string name="settings_noise_window">Окно шума</string>
+    <string name="settings_noise_window_help">За сколько последних минут тишины между фразами считается фоновый шум, который вычитается из спектра. Короче — быстрее подстраивается к новой комнате, длиннее — устойчивее к случайным звукам.</string>
     <string name="settings_w_ring">Вес: купол</string>
     <string name="settings_w_pitch">Вес: точность</string>
     <string name="settings_w_steady">Вес: ровность</string>
@@ -153,7 +159,7 @@
     <string name="settings_log">Лог приложения</string>
     <string name="settings_log_help">Сохраняет в файл журнал этого запуска: устройство, версия, открытие микрофона, ошибки. Файл никуда не отправляется — пришлите его, если что-то не работает.</string>
     <string name="settings_log_save">Сохранить лог</string>
-    <string name="mic_silent">нет сигнала с микрофона</string>
+    <string name="mic_silent">ожидание сигнала с микрофона</string>
     <string name="settings_reset_advanced">Сбросить</string>
     <string name="settings_tokens">Палитра</string>
 
