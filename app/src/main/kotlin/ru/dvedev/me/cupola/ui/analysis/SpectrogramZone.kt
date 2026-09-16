@@ -171,10 +171,11 @@ fun SpectrogramZone(
                     if (targetNote != null) {
                         val f = targetNote.hz()
                         var k = 1
-                        while (k * f < history.fMax) {
+                        while (k * f < history.fMax && k <= 16) { // up to the 16th, like the harmonic numbers
                             val y = history.yFraction(k * f) * plotH
-                            val col = if (k == 1) c.violet.copy(alpha = 0.9f) else c.violet.copy(alpha = 0.3f)
-                            drawLine(col, Offset(gutterL, y), Offset(gutterL + plotW, y), strokeWidth = if (k == 1) 1.5.dp.toPx() else 1f)
+                            // every harmonic of the target equally readable (owner 2026‑09‑16: 1 px at 30 % vanished above k = 1)
+                            val col = if (k == 1) c.violet.copy(alpha = 0.95f) else c.violet.copy(alpha = 0.7f)
+                            drawLine(col, Offset(gutterL, y), Offset(gutterL + plotW, y), strokeWidth = if (k == 1) 2.dp.toPx() else 1.2.dp.toPx())
                             k++
                         }
                     }

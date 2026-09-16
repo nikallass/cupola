@@ -48,7 +48,6 @@ import ru.dvedev.me.cupola.ui.analysis.LocalCentsThresholds
 import ru.dvedev.me.cupola.ui.components.PillButton
 import ru.dvedev.me.cupola.ui.components.PillStyle
 import ru.dvedev.me.cupola.ui.onboarding.OnboardingScreen
-import ru.dvedev.me.cupola.ui.preview.TokensPreviewScreen
 import ru.dvedev.me.cupola.ui.settings.SettingsScreen
 import ru.dvedev.me.cupola.ui.theme.CupolaTheme
 import ru.dvedev.me.cupola.ui.theme.resolvesToDark
@@ -95,7 +94,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { ONBOARDING, ANALYSIS, SETTINGS, TOKENS }
+private enum class Screen { ONBOARDING, ANALYSIS, SETTINGS }
 
 @Composable
 private fun Root(onLanguageChanged: () -> Unit) {
@@ -159,16 +158,8 @@ private fun Root(onLanguageChanged: () -> Unit) {
             SettingsScreen(
                 graph,
                 onBack = { screen = Screen.ANALYSIS },
-                onTokens = { screen = Screen.TOKENS },
                 onLanguageChanged = onLanguageChanged,
             )
-        }
-        Screen.TOKENS -> {
-            BackHandler { screen = Screen.SETTINGS }
-            Column(Modifier.fillMaxSize().background(c.panel).safeDrawingPadding().verticalScroll(rememberScrollState())) {
-                PillButton(stringResource(R.string.action_back), onClick = { screen = Screen.SETTINGS }, style = PillStyle.Outline, modifier = Modifier.padding(14.dp))
-                TokensPreviewScreen(mode = settings.theme, onModeChange = { })
-            }
         }
     }
 }

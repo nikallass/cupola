@@ -58,7 +58,7 @@ import java.util.Date
 /** Settings (SPEC §15.5, T-060). Every field has a «?» with a plain explanation. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onTokens: () -> Unit, onLanguageChanged: () -> Unit) {
+fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onLanguageChanged: () -> Unit) {
     val s by graph.settingsState.collectAsStateWithLifecycle()
     val engineState by graph.engine.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -209,11 +209,20 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onTokens: () -> Unit, on
                 }
                 Row(Modifier.padding(horizontal = CupolaDimens.paddingH, vertical = 10.dp)) {
                     PillButton(stringResource(R.string.settings_reset_advanced), onClick = { scope.launch { graph.settings.resetAdvanced() } }, style = PillStyle.Outline)
-                    Spacer(Modifier.width(10.dp))
-                    PillButton(stringResource(R.string.settings_tokens), onClick = onTokens, style = PillStyle.Outline)
                 }
             }
-            Spacer(Modifier.padding(12.dp))
+            // footer (owner 2026‑09‑16): the open-source repository and a request to support the project
+            val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+            androidx.compose.foundation.layout.Column(
+                Modifier.fillMaxWidth().padding(horizontal = CupolaDimens.paddingH).padding(top = 24.dp, bottom = 32.dp),
+                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(stringResource(R.string.footer_open_source), style = t.body, color = c.mut, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                PillButton(stringResource(R.string.footer_github), onClick = { uriHandler.openUri("https://github.com/nikallass/cupola") }, style = PillStyle.Outline)
+                Text(stringResource(R.string.footer_donate_text), style = t.body, color = c.mut, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+                PillButton(stringResource(R.string.footer_donate), onClick = { uriHandler.openUri("https://www.tbank.ru/cf/BcjzatrF9O") }, style = PillStyle.Primary)
+            }
         }
     }
 }

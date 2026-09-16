@@ -152,8 +152,11 @@
     <string name="settings_log_help">Saves this run\'s log to a file: device, version, microphone opening, errors. The file is not sent anywhere — send it along when something does not work.</string>
     <string name="settings_log_save">Save log</string>
     <string name="mic_silent">waiting for the microphone signal</string>
+    <string name="footer_open_source">Cupola is open source: the code, builds and change history are on GitHub.</string>
+    <string name="footer_github">Project on GitHub</string>
+    <string name="footer_donate_text">If Cupola helps your practice, please support its development — it keeps the app growing.</string>
+    <string name="footer_donate">Support the project</string>
     <string name="settings_reset_advanced">Reset</string>
-    <string name="settings_tokens">Palette</string>
 
     <string name="notif_channel">Session</string>
     <string name="notif_channel_desc">Cupola is listening while a session runs</string>
