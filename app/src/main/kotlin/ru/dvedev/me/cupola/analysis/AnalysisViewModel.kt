@@ -84,6 +84,7 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun startListening() {
         if (engine.start(settings.value.audioSource)) return
+        ru.dvedev.me.cupola.audio.MicJournal.add("microphone did not open, retrying every 2 s", warn = true)
         // the microphone did not open (busy, or the runtime grant not yet effective): retry
         // every couple of seconds while the screen is visible instead of staying dark
         viewModelScope.launch {

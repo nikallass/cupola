@@ -25,6 +25,11 @@ object LogExport {
         sb.append("device: ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append(" (").append(Build.DEVICE).append(")\n")
         sb.append("android: ").append(Build.VERSION.RELEASE).append(" / API ").append(Build.VERSION.SDK_INT).append('\n')
         sb.append("time: ").append(Date()).append("\n\n")
+        sb.append("=== microphone now ===\n")
+        sb.append(runCatching { (context.applicationContext as ru.dvedev.me.cupola.CupolaApp).graph.engine.micDiagnostics() }.getOrElse { "n/a: $it" }).append("\n\n")
+        sb.append("=== microphone journal (since the app started) ===\n")
+        sb.append(ru.dvedev.me.cupola.audio.MicJournal.dump()).append("\n\n")
+        sb.append("=== logcat of this process ===\n")
         runCatching {
             val p = ProcessBuilder("logcat", "-d", "-v", "time", "--pid=${android.os.Process.myPid()}").redirectErrorStream(true).start()
             BufferedReader(InputStreamReader(p.inputStream)).use { r -> r.lineSequence().forEach { sb.append(it).append('\n') } }

@@ -81,6 +81,9 @@ class AudioEngine(
 
     val sourceStatus: AudioSourceStatus? get() = capture.status
 
+    /** Snapshot for «Сохранить лог»: source, silence flag and the system's capture state. */
+    fun micDiagnostics(): String = "running=${running.get()} source=${capture.status?.sourceName} inputSilent=${_inputSilent.value} — ${capture.diagnostics()}"
+
     fun addListener(l: FrameListener) { listeners += l }
     fun removeListener(l: FrameListener) { listeners -= l }
 
@@ -106,7 +109,7 @@ class AudioEngine(
         val status = try {
             capture.open(preference)
         } catch (e: AudioCaptureException) {
-            Log.e(TAG, "cannot open microphone", e)
+            MicJournal.add("cannot open microphone: ${e.message} / ${e.cause} — ${capture.diagnostics()}", warn = true)
             _state.value = EngineState.Error(e.message ?: "audio open failed")
             return false
         }
@@ -132,6 +135,8 @@ class AudioEngine(
             var chunksSinceCheck = 0
             var reopens = 0
             var policySilenced = false
+            var silentSinceNanos = 0L
+            var lastDiagNanos = 0L
             try {
                 capture.start()
                 while (running.get()) {
@@ -153,12 +158,25 @@ class AudioEngine(
                         // flag on: long zeros or silenced by policy; flag off only after 0.2 s of real signal
                         val silent = if (_inputSilent.value) policySilenced || aliveChunks * hop.toDouble() / status.sampleRate < 0.2
                             else silentSeconds >= SILENCE_FLAG_SECONDS || policySilenced
+                        val now = System.nanoTime()
                         if (silent != _inputSilent.value) {
                             _inputSilent.value = silent
-                            Log.w(TAG, if (silent) "input silent: zeros for ${"%.1f".format(silentSeconds)} s, policySilenced=$policySilenced" else "input alive again")
+                            if (silent) {
+                                silentSinceNanos = now
+                                lastDiagNanos = now
+                                MicJournal.add("input silent: zeros ${"%.1f".format(silentSeconds)} s, policySilenced=$policySilenced — ${capture.diagnostics()}", warn = true)
+                            } else {
+                                MicJournal.add("input alive after ${"%.1f".format((now - silentSinceNanos) / 1e9)} s of silence (reopens=$reopens) — ${capture.diagnostics()}")
+                                reopens = 0
+                            }
+                        } else if (silent && now - lastDiagNanos > DIAG_INTERVAL_NS) {
+                            lastDiagNanos = now
+                            MicJournal.add("still silent ${"%.0f".format((now - silentSinceNanos) / 1e9)} s — ${capture.diagnostics()}", warn = true)
                         }
-                        val now = System.nanoTime()
-                        if ((silentSeconds >= SILENCE_REOPEN_SECONDS || (checkedNow && policySilenced)) && now - lastReopenNanos > REOPEN_INTERVAL_NS) {
+                        // back off: reopening every 4 s did not help a policy-silenced client (17 attempts in the
+                        // OnePlus log) — 4 s, 8 s, 16 s, then every 30 s
+                        val interval = minOf(REOPEN_INTERVAL_NS shl minOf(reopens, 3), REOPEN_MAX_INTERVAL_NS)
+                        if ((silentSeconds >= SILENCE_REOPEN_SECONDS || (checkedNow && policySilenced)) && now - lastReopenNanos > interval) {
                             lastReopenNanos = now
                             silentChunks = 0
                             // every other attempt takes the other source: on the OnePlus first launch the
@@ -167,7 +185,7 @@ class AudioEngine(
                             val pref = if (reopens++ % 2 == 1 && lastPreference == AudioSourcePreference.AUTO) {
                                 if (current == AudioCapture.UNPROCESSED) AudioSourcePreference.VOICE_RECOGNITION else AudioSourcePreference.UNPROCESSED
                             } else lastPreference
-                            Log.w(TAG, "reopening the microphone after silence (policySilenced=$policySilenced, attempt=$reopens, preference=$pref)")
+                            MicJournal.add("reopening the microphone (policySilenced=$policySilenced, attempt=$reopens, preference=$pref)", warn = true)
                             try {
                                 capture.stop()
                                 val st = capture.open(pref)
@@ -175,7 +193,7 @@ class AudioEngine(
                                 if (st.sampleRate != status.sampleRate) Log.w(TAG, "reopened at ${st.sampleRate} Hz instead of ${status.sampleRate} Hz")
                                 capture.start()
                             } catch (e: AudioCaptureException) {
-                                Log.e(TAG, "reopen failed", e)
+                                MicJournal.add("reopen failed: ${e.message} — ${capture.diagnostics()}", warn = true)
                             }
                         }
                     } else if (n < 0) {
@@ -224,7 +242,8 @@ class AudioEngine(
         _state.value = EngineState.Running(status)
         captureThread?.start()
         analysisThread?.start()
-        Log.i(TAG, "engine started: hop=$hop, fft=${analyzer.fftSize}, rate=${status.sampleRate}")
+        capture.watchRecordingConfig()
+        MicJournal.add("engine started: hop=$hop, fft=${analyzer.fftSize}, rate=${status.sampleRate} — ${capture.diagnostics()}")
         return true
     }
 
@@ -239,7 +258,8 @@ class AudioEngine(
         analysisThread = null
         capture.close()
         _state.value = EngineState.Idle
-        Log.i(TAG, "engine stopped (overruns=$overruns, readErrors=$readErrors)")
+        capture.unwatchRecordingConfig()
+        MicJournal.add("engine stopped (overruns=$overruns, readErrors=$readErrors)")
     }
 
     val isRunning: Boolean get() = running.get()
@@ -250,6 +270,9 @@ class AudioEngine(
         /** … and this long makes the engine reopen the stream (then at most every REOPEN_INTERVAL_NS). */
         const val SILENCE_REOPEN_SECONDS = 2.0
         const val REOPEN_INTERVAL_NS = 4_000_000_000L
+        const val REOPEN_MAX_INTERVAL_NS = 30_000_000_000L
+        /** While silent, a diagnostics snapshot goes to the journal this often. */
+        const val DIAG_INTERVAL_NS = 10_000_000_000L
         private const val TAG = "CupolaAudio"
         private const val STATS_INTERVAL_NS = 60_000_000_000L
     }
