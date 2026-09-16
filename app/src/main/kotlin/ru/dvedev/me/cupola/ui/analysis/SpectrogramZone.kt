@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -45,12 +45,13 @@ import ru.dvedev.me.cupola.ui.theme.CupolaTheme
 import ru.dvedev.me.cupola.ui.theme.SpectrogramColormap
 import kotlin.math.abs
 
-/** Columns on screen: 8 s at 10 ms per column. */
-private const val VISIBLE_COLUMNS = 800
+/** Columns kept in the ring bitmap: 30 s at 10 ms per column — the widest time span a pinch can show. */
+private const val MAX_COLUMNS = 3000
 
 /**
- * Zone ③ «Спектрограмма» (SPEC §15.3, T-053). The bitmap is a ring of [VISIBLE_COLUMNS]
- * columns updated incrementally from [SpectrogramHistory] every display frame; axes,
+ * Zone ③ «Спектрограмма» (SPEC §15.3, T-053). The bitmap is a ring of [MAX_COLUMNS] (30 s)
+ * columns updated incrementally from [SpectrogramHistory] every display frame; the last
+ * `visibleColumns` of them are stretched over the plot (pinch to change); axes,
  * cupola band, f0 trace, target lines and harmonic ticks are drawn on top.
  */
 @Composable
@@ -62,6 +63,9 @@ fun SpectrogramZone(
     paused: Boolean,
     viewEnd: Long?, // when paused: last column to show, else null = live
     onScroll: (columns: Int) -> Unit = {},
+    /** Visible time span in columns (10 ms each), 200…3000; a horizontal pinch changes it via [onZoom]. */
+    visibleColumns: Int = 800,
+    onZoom: (factor: Float) -> Unit = {},
     collapsed: Boolean = false,
     onToggle: (() -> Unit)? = null,
     /** Display adjustment of the palette (settings): contrast 50…300 % as a power curve on the level. */
@@ -96,8 +100,11 @@ fun SpectrogramZone(
             onToggle = onToggle,
             left = {
                 Label(stringResource(R.string.zone_spectrogram))
-                Spacer(Modifier.width(8.dp))
-                if (paused) Badge(stringResource(R.string.badge_paused)) else Badge(stringResource(R.string.badge_8s))
+                // only a state worth knowing gets a badge (owner 2026‑09‑16: «8 с» said nothing)
+                if (paused) {
+                    Spacer(Modifier.width(8.dp))
+                    Badge(stringResource(R.string.badge_paused))
+                }
             },
             right = { Label(stringResource(if (history.logScale) R.string.spectrogram_axis_hint else R.string.spectrogram_axis_hint_lin)) },
         )
@@ -105,13 +112,11 @@ fun SpectrogramZone(
         var plotWidthPx by remember { mutableFloatStateOf(1f) }
         Box(Modifier.fillMaxSize()) {
             Canvas(
-                Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }.pointerInput(paused) {
-                    if (paused) {
-                        detectHorizontalDragGestures { change, dragAmount ->
-                            change.consume()
-                            // dragging right reveals older columns
-                            onScroll((dragAmount / (plotWidthPx / VISIBLE_COLUMNS)).toInt())
-                        }
+                Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }.pointerInput(paused, visibleColumns) {
+                    // pinch (live and paused) squeezes or stretches the time axis; while paused a drag scrolls back
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        if (zoom != 1f) onZoom(zoom)
+                        if (paused && pan.x != 0f) onScroll((pan.x / (plotWidthPx / visibleColumns)).toInt())
                     }
                 },
             ) {
@@ -130,17 +135,18 @@ fun SpectrogramZone(
 
                 // spectrogram image: two segments of the ring, drawn through the platform canvas
                 // (Compose's drawImage would copy the mutable bitmap into an SkImage every frame)
-                val colW = plotW / VISIBLE_COLUMNS
+                val visible = visibleColumns.coerceIn(1, MAX_COLUMNS)
+                val colW = plotW / visible
                 clipRect(gutterL, 0f, gutterL + plotW, plotH) {
                     drawIntoCanvas { canvas ->
+                        // the last `visible` columns of the ring: [a, M) + [0, b) when they wrap, else [a, b)
                         val native = canvas.nativeCanvas
-                        val firstLen = VISIBLE_COLUMNS - s
-                        if (firstLen > 0) {
-                            srcRect.set(s, 0, VISIBLE_COLUMNS, history.rows)
-                            dstRect.set(gutterL, 0f, gutterL + firstLen * colW + 1f, plotH)
-                            native.drawBitmap(bitmap, srcRect, dstRect, bitmapPaint)
-                        }
-                        if (s > 0) {
+                        val a = Math.floorMod(s - visible, MAX_COLUMNS)
+                        val firstLen = if (a < s) visible else MAX_COLUMNS - a
+                        srcRect.set(a, 0, if (a < s) s else MAX_COLUMNS, history.rows)
+                        dstRect.set(gutterL, 0f, gutterL + firstLen * colW + 1f, plotH)
+                        native.drawBitmap(bitmap, srcRect, dstRect, bitmapPaint)
+                        if (a >= s && s > 0) {
                             srcRect.set(0, 0, s, history.rows)
                             dstRect.set(gutterL + firstLen * colW, 0f, gutterL + plotW + 1f, plotH)
                             native.drawBitmap(bitmap, srcRect, dstRect, bitmapPaint)
@@ -167,7 +173,7 @@ fun SpectrogramZone(
                         }
                     }
                     // f0 trace
-                    drawTrace(history, end, gutterL, colW, plotH, c, thresholds, tracePaths)
+                    drawTrace(history, end, visible, gutterL, colW, plotH, c, thresholds, tracePaths)
                 }
                 // frequency axis
                 val ticks = if (history.logScale) listOf(100, 200, 400, 800, 1600, 3200, 6400) else listOf(1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000)
@@ -180,8 +186,10 @@ fun SpectrogramZone(
                 }
                 // time axis (relative to the live edge; when scrolled back the offset is added)
                 val backSec = if (viewEnd != null) ((history.head - viewEnd) * 0.01).toInt() else 0
-                for (sec in 0..8 step 2) {
-                    val x = gutterL + plotW * (1 - sec / 8f)
+                val spanSec = visible / 100f
+                val step = when { spanSec <= 4f -> 1; spanSec <= 10f -> 2; spanSec <= 20f -> 4; else -> 5 }
+                for (sec in 0..spanSec.toInt() step step) {
+                    val x = gutterL + plotW * (1 - sec / spanSec)
                     drawLine(c.line, Offset(x, plotH), Offset(x, plotH + 3.dp.toPx()), strokeWidth = 1f)
                     val total = sec + backSec
                     val label = if (total == 0) "0" else "−$total"
@@ -207,12 +215,12 @@ fun SpectrogramZone(
 }
 
 private fun DrawScope.drawTrace(
-    history: SpectrogramHistory, end: Long, x0: Float, colW: Float, plotH: Float,
+    history: SpectrogramHistory, end: Long, visible: Int, x0: Float, colW: Float, plotH: Float,
     c: ru.dvedev.me.cupola.ui.theme.CupolaColors, th: CentsThresholds, paths: Array<Path>,
 ) {
     // one path per hit class (ok / warn / bad) instead of ~800 drawLine calls per frame
     for (p in paths) p.reset()
-    val start = (end - VISIBLE_COLUMNS).coerceAtLeast(0)
+    val start = (end - visible).coerceAtLeast(0)
     var prevX = Float.NaN
     var prevY = Float.NaN
     var prevF = 0f
@@ -220,7 +228,7 @@ private fun DrawScope.drawTrace(
     while (col < end) {
         val s = history.slot(col)
         val f = history.f0Hz[s]
-        val x = x0 + (col - (end - VISIBLE_COLUMNS)) * colW
+        val x = x0 + (col - (end - visible)) * colW
         if (f > 0f) {
             val y = history.yFraction(f.toDouble()) * plotH
             val cents = history.cents[s]
@@ -252,7 +260,7 @@ private fun DrawScope.drawTrace(
 
 /** Owns the ring bitmap and copies new history columns into it. */
 private class SpectrogramRenderer(private val history: SpectrogramHistory, @Volatile var colormap: SpectrogramColormap) {
-    private val bitmap: Bitmap = Bitmap.createBitmap(VISIBLE_COLUMNS, history.rows, Bitmap.Config.ARGB_8888)
+    private val bitmap: Bitmap = Bitmap.createBitmap(MAX_COLUMNS, history.rows, Bitmap.Config.ARGB_8888)
     private val column = IntArray(history.rows)
     private var renderedEnd = -1L
 
@@ -260,10 +268,10 @@ private class SpectrogramRenderer(private val history: SpectrogramHistory, @Vola
         bitmap.eraseColor(colormap.lut[0])
     }
 
-    fun splitAt(end: Long): Int = ((end % VISIBLE_COLUMNS).toInt())
+    fun splitAt(end: Long): Int = ((end % MAX_COLUMNS).toInt())
 
     fun render(end: Long): Bitmap {
-        val from = if (renderedEnd < 0 || end < renderedEnd || end - renderedEnd > VISIBLE_COLUMNS) end - VISIBLE_COLUMNS else renderedEnd
+        val from = if (renderedEnd < 0 || end < renderedEnd || end - renderedEnd > MAX_COLUMNS) end - MAX_COLUMNS else renderedEnd
         var col = from.coerceAtLeast(0)
         while (col < end) {
             copyColumn(col)
@@ -278,6 +286,6 @@ private class SpectrogramRenderer(private val history: SpectrogramHistory, @Vola
         val base = s * history.rows
         val lut = colormap.lut
         for (r in 0 until history.rows) column[r] = lut[history.levels[base + r].toInt() and 0xFF]
-        bitmap.setPixels(column, 0, 1, (col % VISIBLE_COLUMNS).toInt(), 0, 1, history.rows)
+        bitmap.setPixels(column, 0, 1, (col % MAX_COLUMNS).toInt(), 0, 1, history.rows)
     }
 }

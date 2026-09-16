@@ -168,6 +168,10 @@ fun SettingsScreen(graph: AppGraph, onBack: () -> Unit, onRoomNoise: () -> Unit,
             }
 
             SettingsSection(stringResource(R.string.settings_feedback))
+            SwitchRow(stringResource(R.string.settings_training), stringResource(R.string.settings_training_help), s.trainingMode) { v ->
+                if (!v && graph.session.isActive) { graph.stopSession(); graph.session.dismissSummary() }
+                update { it.copy(trainingMode = v) }
+            }
             SwitchRow(stringResource(R.string.settings_haptics), stringResource(R.string.settings_haptics_help), s.haptics ?: !tablet) { v -> update { it.copy(haptics = v) } }
             SwitchRow(stringResource(R.string.settings_points_anim), stringResource(R.string.settings_points_anim_help), s.pointsAnimation) { v -> update { it.copy(pointsAnimation = v) } }
             SwitchRow(stringResource(R.string.settings_hints), stringResource(R.string.settings_hints_help), s.hints) { v -> update { it.copy(hints = v) } }

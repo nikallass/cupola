@@ -91,6 +91,7 @@ class SettingsRepository(context: Context) {
             haptics = this[booleanPreferencesKey(K_HAPTICS)],
             pointsAnimation = this[booleanPreferencesKey(K_POINTS_ANIM)] ?: d.pointsAnimation,
             hints = this[booleanPreferencesKey(K_HINTS)] ?: d.hints,
+            trainingMode = this[booleanPreferencesKey(K_TRAINING)] ?: d.trainingMode,
             centsOk = this[intPreferencesKey(K_CENTS_OK)] ?: d.centsOk,
             centsWarn = this[intPreferencesKey(K_CENTS_WARN)] ?: d.centsWarn,
             confidenceMin = this[doublePreferencesKey(K_CONF)] ?: d.confidenceMin,
@@ -126,6 +127,7 @@ class SettingsRepository(context: Context) {
         if (h == null) remove(booleanPreferencesKey(K_HAPTICS)) else this[booleanPreferencesKey(K_HAPTICS)] = h
         this[booleanPreferencesKey(K_POINTS_ANIM)] = s.pointsAnimation
         this[booleanPreferencesKey(K_HINTS)] = s.hints
+        this[booleanPreferencesKey(K_TRAINING)] = s.trainingMode
         this[intPreferencesKey(K_CENTS_OK)] = s.centsOk
         this[intPreferencesKey(K_CENTS_WARN)] = s.centsWarn
         this[doublePreferencesKey(K_CONF)] = s.confidenceMin
@@ -162,6 +164,7 @@ class SettingsRepository(context: Context) {
         private const val K_HAPTICS = "haptics"
         private const val K_POINTS_ANIM = "pointsAnimation"
         private const val K_HINTS = "hints"
+        private const val K_TRAINING = "trainingMode"
         private const val K_CENTS_OK = "centsOk"
         private const val K_CENTS_WARN = "centsWarn"
         private const val K_CONF = "confidenceMin"

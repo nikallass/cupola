@@ -28,7 +28,7 @@
     <string name="badge_db">dB</string>
     <string name="spectrum_legend">серая линия — шум комнаты</string>
     <string name="tap_to_pin">тап — закрепить ноту</string>
-    <string name="target_prefix">цель</string>
+    <string name="target_prefix">Цель:</string>
     <string name="cupola">купол</string>
     <string name="hump_fmt">%1$s dB</string>
     <string name="cupola_readout">купол %1$s %% · %2$s dB</string>
@@ -73,7 +73,7 @@
     <string name="summary_ring">Купол (средний)</string>
     <string name="summary_pitch">Точность (средняя)</string>
     <string name="summary_steady">Ровность (средняя)</string>
-    <string name="summary_note">Купол считается по доле энергии в полосе и по горбу над соседями — громкость не награждается. Сравнивайте себя с собой.</string>
+    <string name="summary_note">Купол считается по доле энергии в полосе и по возвышению над соседями — громкость не награждается. Сравнивайте себя с собой.</string>
 
     <!-- room noise -->
     <string name="noise_title">Шум комнаты</string>
@@ -147,6 +147,8 @@
     <string name="settings_haptics_help">В сессии устройство вибрирует тем чаще, чем выше балл. Вибрация может попасть в микрофон: держите телефон в руке или на мягком. На планшетах по умолчанию выключена.</string>
     <string name="settings_points_anim">Анимация очков</string>
     <string name="settings_points_anim_help">Золотые кружки из дуги купола при начислении очков.</string>
+    <string name="settings_training">Режим тренировки</string>
+    <string name="settings_training_help">Верхняя панель: «Старт», «Пауза», время сессии и очки. Выключите, если нужен только анализ голоса — панель исчезнет, а настройки откроются плавающей кнопкой в углу экрана.</string>
     <string name="settings_hints">Подсказки</string>
     <string name="settings_hints_help">Одна строка под нотой: что произошло со звуком. Никаких технических инструкций — только «тише», «шаг назад» или «стоп».</string>
     <string name="settings_advanced">advanced</string>
@@ -161,7 +163,7 @@
     <string name="settings_confidence_help">Минимальная уверенность детектора высоты, чтобы нота считалась. Ниже — больше ложных нот, выше — пропуски на тихом звуке.</string>
     <string name="settings_ring_share">Купол: доля для максимума</string>
     <string name="settings_ring_share_help">Какая доля энергии голоса (80 Гц – 8 кГц, без шума комнаты) должна попасть в полосу купола, чтобы дуга сомкнулась. Ниже — легче, выше — строже.</string>
-    <string name="settings_ring_hump">Купол: горб для максимума</string>
+    <string name="settings_ring_hump">Купол: возвышение для максимума</string>
     <string name="settings_ring_hump_help">На сколько dB пик в полосе купола должен возвышаться над соседними участками спектра, чтобы дуга сомкнулась. Громкость на это не влияет.</string>
     <string name="settings_straight_cents">Прямой тон: размах до</string>
     <string name="settings_vibrato_min_hz">Вибрато: частота от</string>
@@ -188,7 +190,7 @@
     <!-- onboarding -->
     <string name="ob_step">шаг %1$d из %2$d</string>
     <string name="ob_1_title">Всё относительно</string>
-    <string name="ob_1_body">Купол показывает, что происходит со звуком: ноту, обертоны и «звон» — яркую полосу около 3 кГц, которая даёт голосу лететь. Купол засчитывается по доле энергии в этой полосе и по горбу над соседями, а не по громкости. Сравнивайте себя с собой вчерашним, а не с другими.</string>
+    <string name="ob_1_body">Купол показывает, что происходит со звуком: ноту, обертоны и «звон» — яркую полосу около 3 кГц, которая даёт голосу лететь. Купол засчитывается по доле энергии в этой полосе и по возвышению над соседями, а не по громкости. Сравнивайте себя с собой вчерашним, а не с другими.</string>
     <string name="ob_1_soft">Приложение никогда не награждает громкость. Тихий звонкий звук ценнее громкого гулкого.</string>
     <string name="ob_1_haptics">Вибрация может попасть в микрофон: держите телефон в руке или на мягком.</string>
     <string name="ob_2_title">Микрофон</string>

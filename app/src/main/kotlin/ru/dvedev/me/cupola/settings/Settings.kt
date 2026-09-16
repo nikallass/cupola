@@ -36,6 +36,8 @@ data class Settings(
     val haptics: Boolean? = null,
     val pointsAnimation: Boolean = true,
     val hints: Boolean = true,
+    /** Training mode (owner 2026‑09‑16): the top bar with Start/Pause/time/points; off = analysis only, a floating settings button. */
+    val trainingMode: Boolean = true,
     // advanced
     val centsOk: Int = 10,
     val centsWarn: Int = 25,

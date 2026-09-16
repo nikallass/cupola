@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -102,8 +103,8 @@ fun NoteZone(
 
     // the arc shows the cupola indicator (owner decision 2026‑09‑15): share of the voice
     // energy in the band × the hump it makes over its flanks, loudness-independent
-    val arcValue = if (!display.ringSharePct.isNaN()) "%.0f %%".format(display.ringSharePct) else "—"
-    val arcSub = if (!display.humpDb.isNaN()) formatDb(display.humpDb) + " dB" else ""
+    val arcValue = "%.0f %%".format(if (display.ringSharePct.isNaN()) 0.0 else display.ringSharePct)
+    val arcSub = formatDb(if (display.humpDb.isNaN()) 0.0 else display.humpDb) + " dB"
 
     val arcFill = if (m != null && m.voice) display.ring.coerceIn(0.0, 1.0) else 0.0
     val arcCounted = display.counted
@@ -115,18 +116,10 @@ fun NoteZone(
             ZoneHeader(
                 collapsed = if (onToggle != null) collapsed else null,
                 onToggle = onToggle,
-                left = {
-                    Label(stringResource(R.string.zone_note))
-                    Spacer(Modifier.width(8.dp))
-                    Badge(if (targetNote != null) stringResource(R.string.badge_target) else stringResource(R.string.badge_live))
-                },
+                left = { Label(stringResource(R.string.zone_note)) },
                 right = {
-                    // why the ring is not being counted right now (SPEC §6.2 gates), else the target / tap hint
-                    val gateText = if (m != null && m.voice && !display.counted) when (display.gate) {
-                        Gate.LOW_CONFIDENCE -> stringResource(R.string.gate_low_confidence)
-                        Gate.SOVT -> stringResource(R.string.gate_sovt)
-                        else -> null
-                    } else null
+                    // owner 2026‑09‑16: no flickering «не считается…» / «тап — закрепить» here — only the
+                    // pinned target (and the folded note, and a dead microphone)
                     val thresholds = LocalCentsThresholds.current
                     when {
                         // folded zone (owner 2026‑09‑16): the note itself, ▲/▼ when sharp/flat, green when in tune
@@ -144,9 +137,7 @@ fun NoteZone(
                         }
                         collapsed -> Box(Modifier.height(20.dp), contentAlignment = Alignment.CenterEnd) { Text("—", style = t.stats, color = c.dim, maxLines = 1) }
                         inputSilent -> Label(stringResource(R.string.mic_silent), color = c.bad)
-                        gateText != null -> Label(gateText, color = c.warn)
                         targetNote != null -> Label(stringResource(R.string.target_prefix) + " " + NoteNames.label(targetNote, notation, accidentals).joined)
-                        else -> Label(stringResource(R.string.tap_to_pin))
                     }
                 },
             )
@@ -169,14 +160,7 @@ fun NoteZone(
                         overflow = TextOverflow.Clip,
                         modifier = Modifier.height(if (compact) 68.dp else 84.dp),
                     )
-                    Row(Modifier.height(44.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (voiced && notation == NotationMode.BOTH) {
-                            Text(NoteNames.en(display.note, accidentals), style = t.noteEn, color = c.dim, maxLines = 1)
-                        }
-                        if (voiced) {
-                            Text(NoteNames.cents(display.cents), style = t.cents, color = centsColor(display.cents), maxLines = 1)
-                        }
-                    }
+                    CentsRow(voiced = voiced, showName = voiced && notation == NotationMode.BOTH, name = NoteNames.en(display.note, accidentals), cents = display.cents)
                     CentsScale(cents = if (voiced) display.cents else Double.NaN, Modifier.fillMaxWidth().height(24.dp).padding(top = 4.dp))
                     Spacer(Modifier.height(6.dp))
                     Text(subLine(m, display, targetNote, notation, accidentals), style = t.sub, color = c.dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(20.dp))
@@ -198,7 +182,7 @@ fun NoteZone(
                 ) {
                     noteBlock(Modifier.weight(1f))
                     Spacer(Modifier.width(12.dp))
-                    Box(Modifier.width(150.dp)) {
+                    Box(Modifier.width(172.dp)) {
                         CupolaArc(ring = arcFill, counted = arcCounted, valueText = arcValue, subText = arcSub, modifier = arcModifier.fillMaxWidth(), targetNote = targetNote, onGiveTone = onGiveTone, onPickNote = onPickNote)
                         if (pointsAnimation) PointsBurst(session.lastPoints, Modifier.matchParentSize())
                     }
@@ -225,6 +209,47 @@ private fun subLine(m: FrameMetrics?, d: DisplayNote, target: Note?, notation: N
     }
     if (target != null) parts += stringResource(R.string.target_prefix) + " " + (if (notation == NotationMode.EN) NoteNames.en(target, accidentals) else NoteNames.ruShort(target, accidentals))
     return parts.joinToString(" · ")
+}
+
+/**
+ * Scientific name + cents in fixed places (owner 2026‑09‑16: the ¢ drifted with the width of
+ * the digits): the name at the left edge, the number centred over the middle of the cents scale
+ * in a box sized for the widest value, the ¢ right after it. When the column is too narrow for a
+ * centred group, the group sits right after a fixed-width name box instead — still static.
+ */
+@Composable
+private fun CentsRow(voiced: Boolean, showName: Boolean, name: String, cents: Double) {
+    val c = CupolaTheme.colors
+    val t = CupolaTheme.type
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    BoxWithConstraints(Modifier.fillMaxWidth().height(44.dp)) {
+        val wide = maxWidth >= 300.dp
+        val nameStyle = if (wide) t.noteEn else t.noteEn.copy(fontSize = t.noteEn.fontSize * 0.75f)
+        val centsStyle = if (wide) t.cents else t.cents.copy(fontSize = t.cents.fontSize * 0.75f)
+        val numW = with(density) { measurer.measure("−50", centsStyle).size.width.toDp() + 4.dp }
+        val signW = with(density) { measurer.measure("¢", centsStyle).size.width.toDp() + 6.dp }
+        val nameW = with(density) { measurer.measure("G♯8", nameStyle).size.width.toDp() + 8.dp }
+        val color = centsColor(cents)
+        val number = if (voiced) NoteNames.cents(cents).removeSuffix(" ¢").removeSuffix("¢").trim() else ""
+        val group: @Composable () -> Unit = {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(number, style = centsStyle, color = color, maxLines = 1, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.width(numW))
+                Text(if (voiced) "¢" else "", style = centsStyle, color = color, maxLines = 1, modifier = Modifier.width(signW).padding(start = 4.dp))
+            }
+        }
+        if (showName) Text(name, style = nameStyle, color = c.dim, maxLines = 1, modifier = Modifier.align(Alignment.BottomStart))
+        val centred = maxWidth >= nameW * 2 + numW + signW * 2
+        if (centred || !showName) {
+            // number centred on the scale: an invisible ¢-wide spacer on the left balances the ¢ on the right
+            Row(Modifier.align(Alignment.BottomCenter), verticalAlignment = Alignment.Bottom) {
+                Spacer(Modifier.width(signW))
+                group()
+            }
+        } else {
+            Row(Modifier.align(Alignment.BottomStart).padding(start = nameW), verticalAlignment = Alignment.Bottom) { group() }
+        }
+    }
 }
 
 /** −50…+50 ¢ scale with the ±10 ok zone, ±25 ticks and a pin coloured by hit class. */
@@ -308,11 +333,8 @@ private fun CupolaArc(ring: Double, counted: Boolean, valueText: String, subText
         }
         Text(subText, style = t.stats, color = c.goldInk, maxLines = 1, modifier = Modifier.height(22.dp).padding(top = 2.dp))
         // under the readout: the pinned note (or ♪ → picker) and «Дать тон», which needs a pinned note
-        // the row may be wider than the arc column (A♯4 + «Дать тон»): it overflows symmetrically instead of clipping
-        Row(
-            Modifier.padding(top = 10.dp).wrapContentWidth(Alignment.CenterHorizontally, unbounded = true),
-            horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically,
-        ) {
+        // the arc column is sized so «A♯4 · Дать тон» fits: anything drawn outside a node's bounds is not repainted reliably
+        Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             PillButton(if (targetNote != null) NoteNames.en(targetNote) else "♯", onClick = onPickNote, style = PillStyle.Outline, compact = true, active = targetNote != null)
             // Muted (panel fill + darker line): the Outline border is invisible on the cream panel
             PillButton(stringResource(R.string.action_give_tone), onClick = onGiveTone, style = PillStyle.Muted, compact = true, enabled = targetNote != null)

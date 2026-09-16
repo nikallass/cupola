@@ -25,7 +25,7 @@
     <string name="badge_db">dB</string>
     <string name="spectrum_legend">grey line — room noise</string>
     <string name="tap_to_pin">tap to pin the note</string>
-    <string name="target_prefix">target</string>
+    <string name="target_prefix">Target:</string>
     <string name="cupola">cupola</string>
     <string name="hump_fmt">%1$s dB</string>
     <string name="cupola_readout">cupola %1$s %% · %2$s dB</string>
@@ -66,7 +66,7 @@
     <string name="summary_ring">Cupola (mean)</string>
     <string name="summary_pitch">Accuracy (mean)</string>
     <string name="summary_steady">Steadiness (mean)</string>
-    <string name="summary_note">The cupola is scored by the share of energy in the band and its hump over the neighbours — loudness is never rewarded. Compare yourself with yourself.</string>
+    <string name="summary_note">The cupola is scored by the share of energy in the band and its rise above the neighbours — loudness is never rewarded. Compare yourself with yourself.</string>
     <!-- room noise -->
     <string name="noise_title">Room noise</string>
     <string name="noise_step_intro">step 0</string>
@@ -139,6 +139,8 @@
     <string name="settings_haptics_help">During a session the device vibrates more often the higher the score. Vibration can leak into the microphone: hold the phone or put it on something soft. Off by default on tablets.</string>
     <string name="settings_points_anim">Points animation</string>
     <string name="settings_points_anim_help">Gold dots from the cupola arc when points are awarded.</string>
+    <string name="settings_training">Training mode</string>
+    <string name="settings_training_help">The top bar: Start, Pause, session time and points. Turn it off if you only want the voice analysis — the bar goes away and settings open from a floating button in the corner.</string>
     <string name="settings_hints">Hints</string>
     <string name="settings_hints_help">One line under the note: what happened to the sound. No technical instructions — only "softer", "step back" or "stop".</string>
     <string name="settings_advanced">advanced</string>
@@ -153,7 +155,7 @@
     <string name="settings_confidence_help">Minimum pitch-detector confidence for a note to count. Lower — more false notes; higher — gaps on quiet sound.</string>
     <string name="settings_ring_share">Cupola: share for maximum</string>
     <string name="settings_ring_share_help">What share of the voice energy (80 Hz – 8 kHz, room noise removed) must sit in the cupola band for the arc to close. Lower — easier, higher — stricter.</string>
-    <string name="settings_ring_hump">Cupola: hump for maximum</string>
+    <string name="settings_ring_hump">Cupola: rise for maximum</string>
     <string name="settings_ring_hump_help">How many dB the peak in the cupola band must rise above the neighbouring spectrum for the arc to close. Loudness does not affect it.</string>
     <string name="settings_straight_cents">Straight tone: extent up to</string>
     <string name="settings_vibrato_min_hz">Vibrato: rate from</string>
@@ -178,7 +180,7 @@
 
     <string name="ob_step">step %1$d of %2$d</string>
     <string name="ob_1_title">Everything is relative</string>
-    <string name="ob_1_body">Cupola shows what happens to the sound: the note, the overtones and the "ring" — a bright band around 3 kHz that lets the voice carry. The cupola is credited for the share of energy in that band and its hump over the neighbours, not for loudness. Compare yourself with yesterday\'s you, not with others.</string>
+    <string name="ob_1_body">Cupola shows what happens to the sound: the note, the overtones and the "ring" — a bright band around 3 kHz that lets the voice carry. The cupola is credited for the share of energy in that band and its rise above the neighbours, not for loudness. Compare yourself with yesterday\'s you, not with others.</string>
     <string name="ob_1_soft">The app never rewards loudness. A quiet ringing sound is worth more than a loud boomy one.</string>
     <string name="ob_1_haptics">Vibration can leak into the microphone: hold the phone or put it on something soft.</string>
     <string name="ob_2_title">Microphone</string>

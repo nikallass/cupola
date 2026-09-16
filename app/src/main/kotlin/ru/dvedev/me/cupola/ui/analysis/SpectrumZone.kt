@@ -83,8 +83,6 @@ fun SpectrumZone(
             onToggle = onToggle,
             left = {
                 Label(stringResource(R.string.zone_spectrum))
-                Spacer(Modifier.width(8.dp))
-                Badge(stringResource(R.string.badge_db))
                 if (showLegend) {
                     Spacer(Modifier.width(10.dp))
                     Label(stringResource(R.string.spectrum_legend))
@@ -92,10 +90,8 @@ fun SpectrumZone(
             },
             right = {
                 if (sharePct != null && humpDb != null) {
-                    Label(
-                        if (sharePct.isNaN() || humpDb.isNaN()) stringResource(R.string.cupola) + " —"
-                        else stringResource(R.string.cupola_readout, "%.0f".format(sharePct), formatDb(humpDb)),
-                    )
+                    // no voice → zeros, not «—»: the label keeps its width and the header does not twitch
+                    Label(stringResource(R.string.cupola_readout, "%.0f".format(if (sharePct.isNaN()) 0.0 else sharePct), formatDb(if (humpDb.isNaN()) 0.0 else humpDb)))
                 }
             },
         )

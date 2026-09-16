@@ -112,11 +112,16 @@ fun PillButton(
     enabled: Boolean = true,
 ) {
     val c = CupolaTheme.colors
-    val (bg, fg, border) = when (style) {
+    val (bg0, fg0, border0) = when (style) {
         PillStyle.Primary -> Triple(c.violetInk, if (c.isDark) c.panel else Color.White, Color.Transparent)
-        PillStyle.Muted -> Triple(c.panel, c.mut, c.line)
+        PillStyle.Muted -> Triple(c.panel, c.mut, c.line2)
         PillStyle.Outline -> Triple(Color.Transparent, if (active) c.violetInk else c.mut, if (active) c.violet else c.line2)
     }
+    // disabled = the same colours at reduced alpha (an alpha graphicsLayer here left the border stale after re-enabling)
+    val dim = if (enabled) 1f else 0.45f
+    val bg = if (bg0 == Color.Transparent) bg0 else bg0.copy(alpha = bg0.alpha * dim)
+    val fg = fg0.copy(alpha = fg0.alpha * dim)
+    val border = if (border0 == Color.Transparent) border0 else border0.copy(alpha = border0.alpha * dim)
     val padH = if (compact) CupolaDimens.compactButtonPaddingH else if (style == PillStyle.Outline) CupolaDimens.pausePaddingH else CupolaDimens.buttonPaddingH
     Row(
         modifier
@@ -124,7 +129,6 @@ fun PillButton(
             .background(bg)
             .border(1.dp, border, CircleShape)
             .clickable(enabled = enabled, onClick = onClick)
-            .alpha(if (enabled) 1f else 0.45f)
             .padding(horizontal = padH, vertical = CupolaDimens.buttonPaddingV),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -57,9 +57,19 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
     /** Last column of the spectrogram window: live (null) or the paused position minus the scroll. */
     val viewEnd: Long? get() = pausedHead?.let { (it - scrollColumns).coerceAtLeast(0) }
 
+    /** Visible spectrogram time span in columns (10 ms each): 2…30 s, pinch on the spectrogram. */
+    var spectrogramSpan: Int by mutableStateOf(800)
+        private set
+
+    fun zoomSpectrogram(factor: Float) {
+        if (factor <= 0f) return
+        spectrogramSpan = (spectrogramSpan / factor).toInt().coerceIn(200, 3000)
+        scrollBy(0)
+    }
+
     fun scrollBy(columns: Int) {
         val head = pausedHead ?: return
-        val maxBack = (minOf(head, spectrogram.columns.toLong()) - 800L).coerceAtLeast(0L).toInt()
+        val maxBack = (minOf(head, spectrogram.columns.toLong()) - spectrogramSpan).coerceAtLeast(0L).toInt()
         scrollColumns = (scrollColumns + columns).coerceIn(0, maxBack)
     }
 

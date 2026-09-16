@@ -8,6 +8,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.padding
@@ -93,16 +95,18 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
         val roomForSpectrum = maxHeight >= 400.dp
         val narrow = maxWidth < 420.dp
         Column(Modifier.fillMaxSize()) {
-            TopBar(
-                voiceType = settings.voiceType,
-                band = band,
-                customBand = settings.useCustomBand,
-                session = session,
-                onStartStop = { if (session.active) vm.stopSession() else startSession() },
-                onPause = { vm.togglePause() },
-                onSettings = onSettings,
-                compact = narrow,
-            )
+            if (settings.trainingMode) {
+                TopBar(
+                    voiceType = settings.voiceType,
+                    band = band,
+                    customBand = settings.useCustomBand,
+                    session = session,
+                    onStartStop = { if (session.active) vm.stopSession() else startSession() },
+                    onPause = { vm.togglePause() },
+                    onSettings = onSettings,
+                    compact = narrow,
+                )
+            }
             val noteZone: @Composable (Modifier, Boolean) -> Unit = { mod, compact ->
                 NoteZone(
                     metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote,
@@ -116,6 +120,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
                 SpectrogramZone(
                     history = vm.spectrogram, band = band, targetNote = vm.targetNote, harmonics = harmonics,
                     paused = vm.paused, viewEnd = vm.viewEnd, onScroll = vm::scrollBy,
+                    visibleColumns = vm.spectrogramSpan, onZoom = vm::zoomSpectrogram,
                     collapsed = spectrogramFolded, onToggle = { spectrogramFolded = !spectrogramFolded },
                     contrastPct = settings.spectrogramContrast,
                     modifier = mod,
@@ -165,6 +170,45 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
                 noteZone(Modifier.fillMaxWidth(), false)
                 ZoneDivider()
                 graphs(1f, if (narrow) 220.dp else CupolaDimens.spectrumHeight, !narrow)
+            }
+        }
+        if (!settings.trainingMode) {
+            // analysis-only mode: pause and settings as floating, half-transparent buttons over the graphs
+            Box(
+                Modifier.align(Alignment.BottomEnd).padding(end = 68.dp, bottom = 16.dp).size(44.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(if (vm.paused) c.violet.copy(alpha = 0.25f) else c.panel.copy(alpha = 0.7f))
+                    .border(1.dp, (if (vm.paused) c.violet else c.line2).copy(alpha = 0.7f), androidx.compose.foundation.shape.CircleShape)
+                    .clickable { vm.togglePause() },
+                contentAlignment = Alignment.Center,
+            ) {
+                val ink = if (vm.paused) c.violetInk else c.mut.copy(alpha = 0.85f)
+                androidx.compose.foundation.Canvas(Modifier.size(18.dp)) {
+                    if (vm.paused) {
+                        // resume: a play triangle
+                        val p = androidx.compose.ui.graphics.Path().apply { moveTo(size.width * 0.2f, 0f); lineTo(size.width, size.height / 2); lineTo(size.width * 0.2f, size.height); close() }
+                        drawPath(p, ink)
+                    } else {
+                        val w = size.width * 0.3f
+                        drawRect(ink, topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.12f, 0f), size = androidx.compose.ui.geometry.Size(w, size.height))
+                        drawRect(ink, topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.58f, 0f), size = androidx.compose.ui.geometry.Size(w, size.height))
+                    }
+                }
+            }
+            Box(
+                Modifier.align(Alignment.BottomEnd).padding(16.dp).size(44.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(c.panel.copy(alpha = 0.7f))
+                    .border(1.dp, c.line2.copy(alpha = 0.7f), androidx.compose.foundation.shape.CircleShape)
+                    .clickable(onClick = onSettings),
+                contentAlignment = Alignment.Center,
+            ) {
+                androidx.compose.material3.Icon(
+                    androidx.compose.material.icons.Icons.Outlined.Settings,
+                    contentDescription = stringResource(R.string.action_settings),
+                    tint = c.mut.copy(alpha = 0.85f),
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
     }
