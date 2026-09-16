@@ -120,14 +120,17 @@ fun <T> ChoiceRow(title: String, help: String?, value: T, options: List<T>, labe
             confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_cancel)) } },
             title = { Text(title) },
             text = {
-                Column {
+                // options as outlined chips (owner 2026‑09‑16: the pale fill alone was lost on the dialog)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     options.forEach { o ->
                         val selected = o == value
+                        val shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
                         Text(
                             label(o),
                             style = CupolaTheme.type.body,
                             color = if (selected) c.violetInk else c.ink,
-                            modifier = Modifier.fillMaxWidth().clickable { onSelect(o); open = false }.background(if (selected) c.panel2 else c.panel).padding(horizontal = 8.dp, vertical = 10.dp),
+                            modifier = Modifier.fillMaxWidth().clip(shape).border(1.dp, if (selected) c.violet else c.goldInk.copy(alpha = 0.55f), shape)
+                                .clickable { onSelect(o); open = false }.background(if (selected) c.panel2 else c.panel).padding(horizontal = 10.dp, vertical = 10.dp),
                         )
                     }
                 }

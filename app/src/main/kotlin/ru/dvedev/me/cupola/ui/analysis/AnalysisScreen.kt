@@ -18,6 +18,7 @@ import ru.dvedev.me.cupola.notation.NoteNames
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -216,13 +217,19 @@ private fun NotePickerDialog(current: Note?, notation: NotationMode, accidentals
         title = { Text(stringResource(R.string.pick_note_title)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
+                // each octave in its own thicker frame, every note an outlined chip (owner 2026‑09‑16)
+                val chip = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                val frame = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                 for (octaveStart in 36..72 step 12) {
-                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(bottom = 10.dp).border(2.dp, c.goldInk.copy(alpha = 0.7f), frame).padding(8.dp),
+                    ) {
                         for (midi in octaveStart until octaveStart + 12) {
                             val n = Note(midi)
                             val selected = current?.midi == midi
                             Column(
-                                Modifier.width(56.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                Modifier.width(56.dp).clip(chip).border(1.dp, if (selected) c.violet else c.goldInk.copy(alpha = 0.55f), chip)
                                     .background(if (selected) c.violet.copy(alpha = 0.25f) else c.panel2)
                                     .clickable { onPick(n) }.padding(vertical = 6.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
