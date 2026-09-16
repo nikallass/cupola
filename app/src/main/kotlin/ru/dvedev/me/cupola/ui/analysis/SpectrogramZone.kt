@@ -70,7 +70,9 @@ fun SpectrogramZone(
 ) {
     val c = CupolaTheme.colors
     val baseColormap = CupolaTheme.colormap
-    val colormap = remember(baseColormap, contrastPct) { baseColormap.adjusted(contrastPct) }
+    // above 100 % the curve is anchored to the running peak level (quantised so the LUT is not rebuilt every frame)
+    val peakLevel = if (contrastPct > 100) (((history.topDb - history.bottomDb) / (history.topDisplayDb - history.bottomDb)) * 20f).toInt() / 20f else 1f
+    val colormap = remember(baseColormap, contrastPct, peakLevel) { baseColormap.adjusted(contrastPct, peakLevel) }
     val measurer = rememberTextMeasurer(cacheSize = 128) // ~25 distinct labels per frame; the default 8 thrashes
     val axisStyle = CupolaTheme.type.axis
     val renderer = remember(history, colormap) { SpectrogramRenderer(history, colormap) }

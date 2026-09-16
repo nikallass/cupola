@@ -33,16 +33,21 @@ class SpectrogramColormap(private val stops: List<Color>) {
     fun argb(level: Float): Int = lut[(level.coerceIn(0f, 1f) * (SIZE - 1)).roundToInt()]
 
     /**
-     * The same palette with a power curve on the level (owner 2026‑09‑16): `level' = level^γ`,
-     * γ = [contrastPct] / 100. Below 100 % the weak half-tones come up, above it only the
-     * peaks stay; the background itself (level 0) never changes, so no uniform tint appears.
+     * The same palette with the level remapped (owner 2026‑09‑16). k = [contrastPct] / 100:
+     * below 100 % a root curve `level^k` lifts the weak levels, so even the noise floor leaves
+     * grainy pixels everywhere; above 100 % the band between a threshold `t = 0.9·p·(1 − 1/k)`
+     * and the running peak level [peakLevel] `p` is stretched to full darkness — so only bold
+     * dark peaks remain whatever the device's absolute level. Level 0 stays white in both directions.
      */
-    fun adjusted(contrastPct: Int): SpectrogramColormap {
+    fun adjusted(contrastPct: Int, peakLevel: Float = 1f): SpectrogramColormap {
         if (contrastPct == 100) return this
         val out = SpectrogramColormap(this)
-        val gamma = contrastPct / 100.0
+        val k = contrastPct / 100.0
+        val p = peakLevel.toDouble().coerceIn(0.15, 1.0)
+        val t = if (k > 1.0) 0.9 * p * (1.0 - 1.0 / k) else 0.0
         for (i in 0 until SIZE) {
-            val y = (i / (SIZE - 1).toDouble()).pow(gamma)
+            val x = i / (SIZE - 1).toDouble()
+            val y = if (k <= 1.0) x.pow(k) else ((x - t) / (p - t)).coerceIn(0.0, 1.0)
             out.lut[i] = lut[(y * (SIZE - 1)).roundToInt().coerceIn(0, SIZE - 1)]
         }
         return out
