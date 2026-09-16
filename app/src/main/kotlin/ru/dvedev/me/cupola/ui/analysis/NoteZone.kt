@@ -181,7 +181,7 @@ fun NoteZone(
                     noteBlock(Modifier.fillMaxWidth())
                     Spacer(Modifier.height(16.dp))
                     Box(Modifier.width(180.dp).align(Alignment.CenterHorizontally)) {
-                        CupolaArc(ring = arcFill, counted = arcCounted, valueText = arcValue, subText = arcSub, modifier = arcModifier.fillMaxWidth())
+                        CupolaArc(ring = arcFill, counted = arcCounted, valueText = arcValue, subText = arcSub, modifier = arcModifier.fillMaxWidth(), giveTone = if (targetNote != null) onGiveTone else null)
                         if (pointsAnimation) PointsBurst(session.lastPoints, Modifier.matchParentSize())
                     }
                 }
@@ -193,17 +193,12 @@ fun NoteZone(
                     noteBlock(Modifier.weight(1f))
                     Spacer(Modifier.width(12.dp))
                     Box(Modifier.width(150.dp)) {
-                        CupolaArc(ring = arcFill, counted = arcCounted, valueText = arcValue, subText = arcSub, modifier = arcModifier.fillMaxWidth())
+                        CupolaArc(ring = arcFill, counted = arcCounted, valueText = arcValue, subText = arcSub, modifier = arcModifier.fillMaxWidth(), giveTone = if (targetNote != null) onGiveTone else null)
                         if (pointsAnimation) PointsBurst(session.lastPoints, Modifier.matchParentSize())
                     }
                 }
             }
             HintRow(if (hintsEnabled) session.hint else null, Modifier.padding(horizontal = CupolaDimens.paddingH).padding(bottom = 6.dp))
-            if (targetNote != null) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = CupolaDimens.paddingH).padding(bottom = 10.dp), horizontalArrangement = Arrangement.End) {
-                    PillButton(stringResource(R.string.action_give_tone), onClick = onGiveTone, style = PillStyle.Outline, compact = true)
-                }
-            }
         }
     }
 }
@@ -256,7 +251,7 @@ private fun CentsScale(cents: Double, modifier: Modifier = Modifier) {
  * earned (voice present, pitch trusted); otherwise the fill is dimmed.
  */
 @Composable
-private fun CupolaArc(ring: Double, counted: Boolean, valueText: String, subText: String, modifier: Modifier = Modifier) {
+private fun CupolaArc(ring: Double, counted: Boolean, valueText: String, subText: String, modifier: Modifier = Modifier, giveTone: (() -> Unit)? = null) {
     val c = CupolaTheme.colors
     val t = CupolaTheme.type
     val fill by animateFloatAsState(targetValue = ring.toFloat(), animationSpec = tween(180), label = "ring")
@@ -306,6 +301,8 @@ private fun CupolaArc(ring: Double, counted: Boolean, valueText: String, subText
         Text(valueText, style = t.ringValue, color = if (met && counted) c.ok else c.goldInk, maxLines = 1)
         }
         Text(subText, style = t.stats, color = c.goldInk, maxLines = 1, modifier = Modifier.height(22.dp).padding(top = 2.dp))
+        // «Дать тон» right under the readout while a target is pinned (owner 2026‑09‑16)
+        if (giveTone != null) PillButton(stringResource(R.string.action_give_tone), onClick = giveTone, style = PillStyle.Outline, compact = true, modifier = Modifier.padding(top = 4.dp))
     }
 }
 
