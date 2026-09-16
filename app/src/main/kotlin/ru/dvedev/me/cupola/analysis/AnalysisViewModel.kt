@@ -95,6 +95,11 @@ class AnalysisViewModel(private val graph: AppGraph) : ViewModel() {
         if (targetNote == null) referenceTone.stop()
     }
 
+    /** Pins [note] as the target (note picker). */
+    fun pinTarget(note: Note) {
+        targetNote = note
+    }
+
     private val referenceTone = ru.dvedev.me.cupola.audio.ReferenceTone()
 
     /** «Дать тон»: plays the pinned note at the configured A4. */

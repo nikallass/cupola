@@ -102,7 +102,12 @@ private fun Root(onLanguageChanged: () -> Unit) {
     DisposableEffect(lifecycleOwner, granted) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> { graph.activityVisible = true; if (granted) vm.startListening() }
+                Lifecycle.Event.ON_START -> {
+                    graph.activityVisible = true
+                    // re-read the permission: on some OEMs the grant dialog is a full activity and the flag set on our callbacks may be stale
+                    granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                    if (granted) vm.startListening()
+                }
                 Lifecycle.Event.ON_STOP -> { graph.activityVisible = false; vm.stopListeningIfIdle() }
                 else -> Unit
             }

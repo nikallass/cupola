@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
@@ -107,6 +108,8 @@ fun PillButton(
     leading: @Composable (() -> Unit)? = null,
     /** Tighter horizontal padding for narrow top bars (phones). */
     compact: Boolean = false,
+    /** Disabled: dimmed and not clickable, but still in the layout. */
+    enabled: Boolean = true,
 ) {
     val c = CupolaTheme.colors
     val (bg, fg, border) = when (style) {
@@ -120,7 +123,8 @@ fun PillButton(
             .clip(CircleShape)
             .background(bg)
             .border(1.dp, border, CircleShape)
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
+            .alpha(if (enabled) 1f else 0.4f)
             .padding(horizontal = padH, vertical = CupolaDimens.buttonPaddingV),
         verticalAlignment = Alignment.CenterVertically,
     ) {

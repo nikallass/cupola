@@ -66,6 +66,7 @@ class RoomNoiseViewModel(private val graph: AppGraph) : ViewModel() {
     }
 
     fun begin() {
+        if (!engine.isRunning) engine.start(graph.settingsState.value.audioSource)
         val a = engine.analyzer
         running = RoomNoiseSession(a.hopSeconds, a.sampleRate, a.fftSize)
         _state.value = RoomNoiseUiState(step = RoomNoiseStep.MEASURING)

@@ -8,6 +8,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.padding
+import ru.dvedev.me.cupola.notation.Accidentals
+import ru.dvedev.me.cupola.notation.NotationMode
+import ru.dvedev.me.cupola.notation.Note
+import ru.dvedev.me.cupola.notation.NoteNames
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -52,6 +63,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
     val displayNote = if (vm.paused) (vm.frozenNote ?: liveNote) else liveNote
     val session by vm.session.state.collectAsStateWithLifecycle()
     val inputSilent by vm.inputSilent.collectAsStateWithLifecycle()
+    var pickerOpen by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     // Android 13+: ask for notification permission once, right before the first session
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { vm.startSession() }
@@ -94,7 +106,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
                 NoteZone(
                     metrics = metrics, display = displayNote, session = session, targetNote = vm.targetNote,
                     notation = notation, accidentals = accidentals, hintsEnabled = settings.hints, pointsAnimation = settings.pointsAnimation,
-                    onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onRoomNoise, onGiveTone = { vm.playTargetTone() }, inputSilent = inputSilent,
+                    onTapNote = { vm.toggleTarget(it) }, onLongPressArc = onRoomNoise, onGiveTone = { vm.playTargetTone() }, onPickNote = { pickerOpen = true }, inputSilent = inputSilent,
                     modifier = mod, compact = compact,
                     collapsed = noteFolded, onToggle = { noteFolded = !noteFolded },
                 )
@@ -156,6 +168,7 @@ fun AnalysisScreen(vm: AnalysisViewModel, onSettings: () -> Unit, onRoomNoise: (
         }
     }
 
+    if (pickerOpen) NotePickerDialog(current = vm.targetNote, notation = notation, accidentals = accidentals, onPick = { vm.pinTarget(it); pickerOpen = false }, onClear = { vm.toggleTarget(null); pickerOpen = false }, onDismiss = { pickerOpen = false })
     session.summary?.let { summary -> SummaryDialog(summary, onDismiss = { vm.dismissSummary() }) }
 }
 
@@ -190,4 +203,39 @@ private fun SummaryRow(label: String, value: String, color: androidx.compose.ui.
         Text(label, style = CupolaTheme.type.body, color = CupolaTheme.colors.mut, modifier = Modifier.weight(1f))
         Text(value, style = CupolaTheme.type.stats, color = color)
     }
+}
+
+/** Note picker (owner 2026‑09‑16): C2…C6 in a grid, international name large, Russian name small. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun NotePickerDialog(current: Note?, notation: NotationMode, accidentals: Accidentals, onPick: (Note) -> Unit, onClear: () -> Unit, onDismiss: () -> Unit) {
+    val c = CupolaTheme.colors
+    val t = CupolaTheme.type
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.pick_note_title)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                for (octaveStart in 36..72 step 12) {
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+                        for (midi in octaveStart until octaveStart + 12) {
+                            val n = Note(midi)
+                            val selected = current?.midi == midi
+                            Column(
+                                Modifier.width(56.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                    .background(if (selected) c.violet.copy(alpha = 0.25f) else c.panel2)
+                                    .clickable { onPick(n) }.padding(vertical = 6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(NoteNames.en(n, accidentals), style = t.stats, color = c.ink)
+                                Text(NoteNames.ruShort(n, accidentals), style = t.axis, color = c.dim)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },
+        dismissButton = { if (current != null) TextButton(onClick = onClear) { Text(stringResource(R.string.pick_note_clear)) } },
+    )
 }

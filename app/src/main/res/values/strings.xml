@@ -54,6 +54,8 @@
     <!-- generic -->
     <string name="action_ok">Ок</string>
     <string name="action_cancel">Отмена</string>
+    <string name="pick_note_title">Закрепить ноту</string>
+    <string name="pick_note_clear">Снять</string>
     <string name="action_give_tone">Дать тон</string>
     <string name="action_back">Назад</string>
     <string name="unit_s">с</string>

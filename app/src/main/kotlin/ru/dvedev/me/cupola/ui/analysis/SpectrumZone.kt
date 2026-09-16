@@ -91,10 +91,12 @@ fun SpectrumZone(
                 }
             },
             right = {
-                Label(
-                    if (sharePct == null || sharePct.isNaN() || humpDb == null || humpDb.isNaN()) stringResource(R.string.cupola) + " —"
-                    else stringResource(R.string.cupola_readout, "%.0f".format(sharePct), formatDb(humpDb)),
-                )
+                if (sharePct != null && humpDb != null) {
+                    Label(
+                        if (sharePct.isNaN() || humpDb.isNaN()) stringResource(R.string.cupola) + " —"
+                        else stringResource(R.string.cupola_readout, "%.0f".format(sharePct), formatDb(humpDb)),
+                    )
+                }
             },
         )
         if (collapsed) return@Column

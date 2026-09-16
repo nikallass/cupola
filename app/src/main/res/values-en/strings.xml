@@ -48,6 +48,8 @@
 
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
+    <string name="pick_note_title">Pin a note</string>
+    <string name="pick_note_clear">Unpin</string>
     <string name="action_give_tone">Play the tone</string>
     <string name="action_back">Back</string>
     <string name="unit_s">s</string>
